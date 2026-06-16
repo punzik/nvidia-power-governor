@@ -6,10 +6,16 @@ Prevents GPU overheating under heavy load by smoothly adjusting the maximum powe
 
 > This code was written with the help of a local AI model: **Qwen3.6-27B-UD-Q6_K_XL** with MTP support.
 
+## Requirements
+
+- **`nvidia-smi`** — must be available in `PATH` at runtime (comes with NVIDIA GPU driver)
+- A system with one or more NVIDIA GPUs
+- Root or appropriate permissions to set power limits via `nvidia-smi`
+
 ## Features
 
 - Pure C, no external dependencies (libc only)
-- Statically linked binary — no runtime dependencies
+- Optional static linking — no runtime dependencies when built with `make static`
 - INI-like configuration file
 - Per-GPU power limits and temperature thresholds
 - Separate step sizes for power increase and decrease (fast cooling, slow heating)
