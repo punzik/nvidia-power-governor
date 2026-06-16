@@ -35,6 +35,7 @@ static void emit_timestamp(void)
     struct tm tm;
     localtime_r(&now, &tm);
     fprintf(stdout, "[%02d:%02d:%02d] ", tm.tm_hour, tm.tm_min, tm.tm_sec);
+    fflush(stdout);
 }
 
 static void print_usage(const char *prog)
@@ -45,6 +46,7 @@ static void print_usage(const char *prog)
             "Options:\n"
             "  -c, --config FILE    Configuration file (required)\n"
             "  -h, --help           Show this help and exit\n"
+            "  -t, --timestamp      Show timestamps in log output\n"
             "  -v, --verbose        Enable verbose output\n"
             "      --set-max        Set all GPUs to max power from config and exit\n"
             "      --set-min        Set all GPUs to min power from config and exit\n"
@@ -53,6 +55,7 @@ static void print_usage(const char *prog)
 }
 
 static int verbose;
+static int show_timestamp;
 static volatile sig_atomic_t stop_requested = 0;
 
 static void handle_signal(int sig)
@@ -65,10 +68,12 @@ static void emit_log(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    emit_timestamp();
+    if (show_timestamp)
+        emit_timestamp();
     vfprintf(stdout, fmt, ap);
     va_end(ap);
     fprintf(stdout, "\n");
+    fflush(stdout);
 }
 
 static void emit_verbose(const char *fmt, ...)
@@ -77,10 +82,12 @@ static void emit_verbose(const char *fmt, ...)
         return;
     va_list ap;
     va_start(ap, fmt);
-    emit_timestamp();
+    if (show_timestamp)
+        emit_timestamp();
     vfprintf(stdout, fmt, ap);
     va_end(ap);
     fprintf(stdout, "\n");
+    fflush(stdout);
 }
 
 /* Print each line of a multi-line buffer with two-space indentation. */
@@ -92,7 +99,8 @@ static void emit_indented(const char *buf)
         const char *nl = strchr(p, '\n');
         if (nl) {
             if (first) {
-                emit_timestamp();
+                if (show_timestamp)
+                    emit_timestamp();
                 first = 0;
             }
             fwrite("  ", 1, 2, stdout);
@@ -103,7 +111,8 @@ static void emit_indented(const char *buf)
             /* last line without newline */
             if (*p) {
                 if (first) {
-                    emit_timestamp();
+                    if (show_timestamp)
+                        emit_timestamp();
                     first = 0;
                 }
                 fwrite("  ", 1, 2, stdout);
@@ -113,6 +122,7 @@ static void emit_indented(const char *buf)
             break;
         }
     }
+    fflush(stdout);
 }
 
 
@@ -156,6 +166,7 @@ int main(int argc, char *argv[])
     static struct option long_options[] = {
         {"config",        required_argument, 0, 'c'},
         {"help",          no_argument,       0, 'h'},
+        {"timestamp",     no_argument,       0, 't'},
         {"verbose",       no_argument,       0, 'v'},
         {"set-max",   no_argument,       0, 1},
         {"set-min",   no_argument,       0, 2},
@@ -164,10 +175,13 @@ int main(int argc, char *argv[])
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "c:hv", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "c:htv", long_options, NULL)) != -1) {
         switch (opt) {
         case 'c':
             config_path = optarg;
+            break;
+        case 't':
+            show_timestamp = 1;
             break;
         case 'v':
             verbose = 1;

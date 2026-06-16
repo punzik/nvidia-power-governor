@@ -57,6 +57,7 @@ Usage: nvidia-power-governor [OPTIONS]
 Options:
   -c, --config FILE    Configuration file (required)
   -h, --help           Show this help and exit
+  -t, --timestamp      Show timestamps in log output
   -v, --verbose        Enable verbose output
       --set-max        Set all GPUs to max power from config and exit
       --set-min        Set all GPUs to min power from config and exit
@@ -69,7 +70,7 @@ Options:
 ./nvidia-power-governor -c config.conf
 ```
 
-The program runs as a long-running foreground process. All output goes to stdout with `[HH:MM:SS]` timestamps.
+The program runs as a long-running foreground process. All output goes to stdout. Use `-t` to add `[HH:MM:SS]` timestamps.
 
 ### Running as a systemd service
 
