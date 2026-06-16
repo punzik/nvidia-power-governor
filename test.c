@@ -172,6 +172,26 @@ static int test_long_line_conf(void)
     return 0;
 }
 
+static int test_whitespace_conf(void)
+{
+    /* spaces at line start, around '=', and at line end -> should parse OK */
+    struct config *cfg = load_or_fail("tests/whitespace.conf");
+    assert(cfg != NULL);
+    assert(cfg->gpu_count == 1);
+
+    assert(cfg->global.poll_interval == 1000);
+    assert(cfg->global.avg_samples == 5);
+    assert(cfg->global.power_step == 1);
+    assert(cfg->global.hysteresis == 3);
+
+    assert(cfg->gpus[0].max_temp == 80);
+    assert(cfg->gpus[0].max_power == 300);
+    assert(cfg->gpus[0].min_power == 50);
+
+    config_free(cfg);
+    return 0;
+}
+
 /* ==================== Regulation algorithm tests ==================== */
 
 static struct gpu_config test_gpu_cfg;
@@ -291,6 +311,7 @@ int main(void)
     test("long_value_conf", test_long_value_conf);
     test("long_key_conf", test_long_key_conf);
     test("long_line_conf", test_long_line_conf);
+    test("whitespace_conf", test_whitespace_conf);
 
     printf("\nRegulation algorithm tests:\n");
     test("overheat", test_regulate_overheat);
