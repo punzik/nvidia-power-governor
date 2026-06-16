@@ -11,6 +11,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#define MAIN_OUTPUT_BUF 256
+#define MS_PER_SEC      1000
+
 static void emit_timestamp(void)
 {
     time_t now = time(NULL);
@@ -121,7 +124,7 @@ static void do_restore(const struct config *cfg, int mode)
         default:
             return;
         }
-        char buf[256] = {0};
+        char buf[MAIN_OUTPUT_BUF] = {0};
         emit_log("GPU %d: setting power to %d W", i, power);
         gpu_set_power(i, power, verbose ? buf : NULL, sizeof(buf));
         if (verbose && buf[0])
@@ -251,14 +254,14 @@ int main(int argc, char *argv[])
                 emit_log("GPU %d: temp avg %d C -> power %d -> %d W",
                     i, avg, s->current_power, new_power);
                 s->current_power = new_power;
-                char buf[256] = {0};
+                char buf[MAIN_OUTPUT_BUF] = {0};
                 gpu_set_power(i, new_power, verbose ? buf : NULL, sizeof(buf));
                 if (verbose && buf[0])
                     emit_indented(buf);
             }
         }
 
-        usleep(cfg->global.poll_interval * 1000);
+        usleep(cfg->global.poll_interval * MS_PER_SEC);
     }
 
     /* unreachable, but for clarity */

@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define GPU_QUERY_LINE_BUF  64
+#define GPU_CMD_BUF         128
+#define GPU_OUTPUT_BUF      256
+
 static void die(const char *fmt, ...)
 {
     va_list ap;
@@ -25,7 +29,7 @@ static int query_gpu_int(const char *cmd, int *out)
     if (!f)
         return -1;
 
-    char line[64];
+    char line[GPU_QUERY_LINE_BUF];
     if (!fgets(line, sizeof(line), f)) {
         pclose(f);
         return -1;
@@ -55,7 +59,7 @@ static int query_gpu_float(const char *cmd, int *out)
     if (!f)
         return -1;
 
-    char line[64];
+    char line[GPU_QUERY_LINE_BUF];
     if (!fgets(line, sizeof(line), f)) {
         pclose(f);
         return -1;
@@ -84,7 +88,7 @@ int gpu_count(void)
         die("failed to run nvidia-smi");
 
     int count = 0;
-    char line[64];
+    char line[GPU_QUERY_LINE_BUF];
     while (fgets(line, sizeof(line), f)) {
         /* skip empty lines */
         if (line[0] != '\n' && line[0] != '\r' && line[0] != '\0')
@@ -100,7 +104,7 @@ int gpu_count(void)
 
 int gpu_read_temp(int id)
 {
-    char cmd[128];
+    char cmd[GPU_CMD_BUF];
     snprintf(cmd, sizeof(cmd),
              "nvidia-smi -i %d --query-gpu=temperature.gpu --format=csv,noheader,nounits", id);
 
@@ -113,7 +117,7 @@ int gpu_read_temp(int id)
 
 int gpu_set_power(int id, int power_w, char *out, int out_size)
 {
-    char cmd[128];
+    char cmd[GPU_CMD_BUF];
     snprintf(cmd, sizeof(cmd), "nvidia-smi -i %d -pl %d 2>&1", id, power_w);
 
     FILE *f = popen(cmd, "r");
@@ -146,7 +150,7 @@ int gpu_set_power(int id, int power_w, char *out, int out_size)
 
 int gpu_default_power(int id)
 {
-    char cmd[128];
+    char cmd[GPU_CMD_BUF];
     snprintf(cmd, sizeof(cmd),
              "nvidia-smi -i %d --query-gpu=power.default_limit --format=csv,noheader,nounits", id);
 

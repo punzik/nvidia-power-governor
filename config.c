@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define CONFIG_LINE_BUF 256
+
 /* Trim leading and trailing whitespace in-place. Returns pointer to first non-space. */
 static char *trim(char *s)
 {
@@ -136,7 +138,7 @@ struct config *config_load(const char *path)
     struct parse_ctx ctx;
     ctx_init(&ctx, cfg);
 
-    char line[256];
+    char line[CONFIG_LINE_BUF];
     int line_num = 0;
 
     while (fgets(line, sizeof(line), f)) {
