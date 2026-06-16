@@ -113,8 +113,8 @@ int gpu_read_temp(int id)
 
 int gpu_set_power(int id, int power_w)
 {
-    char cmd[128];
-    snprintf(cmd, sizeof(cmd), "nvidia-smi -i %d -pl %d", id, power_w);
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "nvidia-smi -i %d -pl %d >/dev/null 2>&1", id, power_w);
 
     int rc = system(cmd);
     if (rc != 0)
