@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 static void print_usage(const char *prog)
@@ -46,6 +47,29 @@ static void emit_verbose(const char *fmt, ...)
     fprintf(stdout, "\n");
 }
 
+/* Print each line of a multi-line buffer with two-space indentation. */
+static void emit_indented(const char *buf)
+{
+    const char *p = buf;
+    while (*p) {
+        const char *nl = strchr(p, '\n');
+        if (nl) {
+            fwrite("  ", 1, 2, stdout);
+            fwrite(p, 1, (size_t)(nl - p), stdout);
+            fprintf(stdout, "\n");
+            p = nl + 1;
+        } else {
+            /* last line without newline */
+            if (*p) {
+                fwrite("  ", 1, 2, stdout);
+                fwrite(p, 1, strlen(p), stdout);
+                fprintf(stdout, "\n");
+            }
+            break;
+        }
+    }
+}
+
 
 static int compute_avg_temp(struct gpu_state *state)
 {
@@ -77,8 +101,11 @@ static void do_restore(const struct config *cfg, int mode)
         default:
             return;
         }
+        char buf[256] = {0};
         emit_log("GPU %d: setting power to %d W", i, power);
-        gpu_set_power(i, power);
+        gpu_set_power(i, power, verbose ? buf : NULL, sizeof(buf));
+        if (verbose && buf[0])
+            emit_indented(buf);
     }
 }
 
@@ -166,7 +193,7 @@ int main(int argc, char *argv[])
             i, states[i]->current_power,
             cfg->gpus[i].max_power, cfg->gpus[i].min_power,
             cfg->gpus[i].max_temp);
-        gpu_set_power(i, states[i]->current_power);
+        gpu_set_power(i, states[i]->current_power, NULL, 0);
     }
 
     emit_log("starting regulation loop (poll %d ms, samples %d, step %d W, hysteresis %d C)",
@@ -204,7 +231,10 @@ int main(int argc, char *argv[])
                 emit_log("GPU %d: temp avg %d C -> power %d -> %d W",
                     i, avg, s->current_power, new_power);
                 s->current_power = new_power;
-                gpu_set_power(i, new_power);
+                char buf[256] = {0};
+                gpu_set_power(i, new_power, verbose ? buf : NULL, sizeof(buf));
+                if (verbose && buf[0])
+                    emit_indented(buf);
             }
         }
 

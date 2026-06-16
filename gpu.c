@@ -111,14 +111,35 @@ int gpu_read_temp(int id)
     return temp;
 }
 
-int gpu_set_power(int id, int power_w)
+int gpu_set_power(int id, int power_w, char *out, int out_size)
 {
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd), "nvidia-smi -i %d -pl %d >/dev/null 2>&1", id, power_w);
+    char cmd[128];
+    snprintf(cmd, sizeof(cmd), "nvidia-smi -i %d -pl %d 2>&1", id, power_w);
 
-    int rc = system(cmd);
-    if (rc != 0)
+    FILE *f = popen(cmd, "r");
+    if (!f) {
+        die("failed to run nvidia-smi for GPU %d", id);
+        return -1;
+    }
+
+    if (out && out_size > 0) {
+        int i = 0;
+        int ch;
+        while ((ch = fgetc(f)) != EOF && i < out_size - 1) {
+            out[i++] = (char)ch;
+        }
+        out[i] = '\0';
+    } else {
+        /* discard output */
+        while (fgetc(f) != EOF)
+            ;
+    }
+
+    int rc = pclose(f);
+    if (rc != 0) {
         die("failed to set power limit for GPU %d", id);
+        return -1;
+    }
 
     return 0;
 }

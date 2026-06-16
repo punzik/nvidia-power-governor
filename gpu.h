@@ -17,8 +17,9 @@ int gpu_count(void);
 /* Read current temperature of a GPU. Returns °C or -1 on error. */
 int gpu_read_temp(int id);
 
-/* Set power limit for a GPU. Returns 0 on success, -1 on error. */
-int gpu_set_power(int id, int power_w);
+/* Set power limit for a GPU. Returns 0 on success, -1 on error.
+ * If out is not NULL, captures nvidia-smi output (up to out_size-1 bytes). */
+int gpu_set_power(int id, int power_w, char *out, int out_size);
 
 /* Read factory default power limit. Returns W or -1 on error. */
 int gpu_default_power(int id);
