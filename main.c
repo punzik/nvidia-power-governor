@@ -17,14 +17,28 @@ static void print_usage(const char *prog)
             "Options:\n"
             "  -c, --config FILE    Configuration file (required)\n"
             "  -h, --help           Show this help and exit\n"
+            "  -v, --verbose        Enable verbose output\n"
             "  --restore-max        Set all GPUs to max power from config and exit\n"
             "  --restore-min        Set all GPUs to min power from config and exit\n"
             "  --restore-factory    Set all GPUs to factory default power and exit\n",
             prog);
 }
 
+static int verbose;
+
 static void emit_log(const char *fmt, ...)
 {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stdout, fmt, ap);
+    va_end(ap);
+    fprintf(stdout, "\n");
+}
+
+static void emit_verbose(const char *fmt, ...)
+{
+    if (!verbose)
+        return;
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stdout, fmt, ap);
@@ -76,6 +90,7 @@ int main(int argc, char *argv[])
     static struct option long_options[] = {
         {"config",        required_argument, 0, 'c'},
         {"help",          no_argument,       0, 'h'},
+        {"verbose",       no_argument,       0, 'v'},
         {"restore-max",   no_argument,       0, 1},
         {"restore-min",   no_argument,       0, 2},
         {"restore-factory",no_argument,      0, 3},
@@ -83,10 +98,13 @@ int main(int argc, char *argv[])
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "c:h", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "c:hv", long_options, NULL)) != -1) {
         switch (opt) {
         case 'c':
             config_path = optarg;
+            break;
+        case 'v':
+            verbose = 1;
             break;
         case 'h':
             print_usage(argv[0]);
@@ -118,7 +136,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    emit_verbose("config loaded: %d GPU(s), poll %d ms, samples %d, step %d W, hysteresis %d C",
+                 cfg->gpu_count, cfg->global.poll_interval, cfg->global.avg_samples,
+                 cfg->global.power_step, cfg->global.hysteresis);
+
     int sys_gpu_count = gpu_count();
+    emit_verbose("system GPU count: %d", sys_gpu_count);
+
     if (sys_gpu_count != cfg->gpu_count) {
         fprintf(stderr,
                 "error: system has %d GPU(s) but config defines %d\n",
@@ -160,6 +184,9 @@ int main(int argc, char *argv[])
             s->temp_index = (s->temp_index + 1) % samples;
             if (s->temp_count < samples)
                 s->temp_count++;
+
+            emit_verbose("GPU %d: temp %d C (sample %d/%d)",
+                         i, temp, s->temp_count, samples);
         }
 
         /* compute and apply regulation */
@@ -169,6 +196,9 @@ int main(int argc, char *argv[])
 
             int new_power = regulate_compute(avg, &cfg->gpus[i], &cfg->global,
                                              s->current_power);
+
+            emit_verbose("GPU %d: avg %d C, power %d -> %d W",
+                         i, avg, s->current_power, new_power);
 
             if (new_power != s->current_power) {
                 emit_log("GPU %d: temp avg %d C -> power %d -> %d W",
