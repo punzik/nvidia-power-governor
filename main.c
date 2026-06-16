@@ -3,6 +3,7 @@
 #include "gpu.h"
 #include "regulate.h"
 
+#include <errno.h>
 #include <getopt.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -13,7 +14,20 @@
 #include <unistd.h>
 
 #define MAIN_OUTPUT_BUF 256
-#define MS_PER_SEC      1000
+
+/* Sleep for the given number of milliseconds, handling EINTR.
+ * Returns 0 on success, -1 on error. */
+static int safe_sleep_ms(int ms)
+{
+    struct timespec ts;
+    ts.tv_sec  = (time_t)(ms / 1000);
+    ts.tv_nsec = (long)(ms % 1000) * 1000000L;
+
+    while (nanosleep(&ts, &ts) == -1 && errno == EINTR)
+        ;
+
+    return 0;
+}
 
 static void emit_timestamp(void)
 {
@@ -286,7 +300,7 @@ int main(int argc, char *argv[])
         }
 
         if (!iteration_ok) {
-            usleep(cfg->global.poll_interval * MS_PER_SEC);
+            safe_sleep_ms(cfg->global.poll_interval);
             continue;
         }
 
@@ -316,7 +330,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        usleep(cfg->global.poll_interval * MS_PER_SEC);
+        safe_sleep_ms(cfg->global.poll_interval);
     }
 
     emit_log("shutting down");

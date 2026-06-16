@@ -71,7 +71,7 @@ static int query_gpu_float(const char *cmd, int *out)
 
 int gpu_count(void)
 {
-    FILE *f = popen("nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits", "r");
+    FILE *f = popen("nvidia-smi --query-gpu=index --format=csv,noheader,nounits", "r");
     if (!f)
         return -1;
 
