@@ -24,7 +24,7 @@ test: $(TEST)
 	./$(TEST)
 
 $(TEST): test.o config.o regulate.o
-	$(CC) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ $^
 
 install: $(TARGET)
 	install -Dm755 $(TARGET) $(PREFIX)/bin/$(TARGET)
