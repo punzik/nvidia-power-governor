@@ -40,9 +40,9 @@ Options:
   -c, --config FILE    Configuration file (required)
   -h, --help           Show this help and exit
   -v, --verbose        Enable verbose output
-  --restore-max        Set all GPUs to max power from config and exit
-  --restore-min        Set all GPUs to min power from config and exit
-  --restore-factory    Set all GPUs to factory default power and exit
+      --set-max        Set all GPUs to max power from config and exit
+      --set-min        Set all GPUs to min power from config and exit
+      --set-factory    Set all GPUs to factory default power and exit
 ```
 
 ### Running
@@ -58,9 +58,9 @@ The program runs as a long-running foreground process. All output goes to stdout
 Useful for quickly resetting power limits without restarting:
 
 ```bash
-./nvidia-power-governor -c config.conf --restore-max
-./nvidia-power-governor -c config.conf --restore-min
-./nvidia-power-governor -c config.conf --restore-factory
+./nvidia-power-governor -c config.conf --set-max
+./nvidia-power-governor -c config.conf --set-min
+./nvidia-power-governor -c config.conf --set-factory
 ```
 
 ## Configuration

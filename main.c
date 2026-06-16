@@ -31,9 +31,9 @@ static void print_usage(const char *prog)
             "  -c, --config FILE    Configuration file (required)\n"
             "  -h, --help           Show this help and exit\n"
             "  -v, --verbose        Enable verbose output\n"
-            "  --restore-max        Set all GPUs to max power from config and exit\n"
-            "  --restore-min        Set all GPUs to min power from config and exit\n"
-            "  --restore-factory    Set all GPUs to factory default power and exit\n",
+            "      --set-max        Set all GPUs to max power from config and exit\n"
+            "      --set-min        Set all GPUs to min power from config and exit\n"
+            "      --set-factory    Set all GPUs to factory default power and exit\n",
             prog);
 }
 
@@ -107,7 +107,7 @@ static int compute_avg_temp(struct gpu_state *state)
     return (int)(sum / count);
 }
 
-static void do_restore(const struct config *cfg, int mode)
+static void do_set_power(const struct config *cfg, int mode)
 {
     for (int i = 0; i < cfg->gpu_count; i++) {
         int power;
@@ -135,15 +135,15 @@ static void do_restore(const struct config *cfg, int mode)
 int main(int argc, char *argv[])
 {
     const char *config_path = NULL;
-    int restore_mode = 0;  /* 0=run loop, 'M'=max, 'm'=min, 'F'=factory */
+    int set_power_mode = 0;  /* 0=run loop, 'M'=max, 'm'=min, 'F'=factory */
 
     static struct option long_options[] = {
         {"config",        required_argument, 0, 'c'},
         {"help",          no_argument,       0, 'h'},
         {"verbose",       no_argument,       0, 'v'},
-        {"restore-max",   no_argument,       0, 1},
-        {"restore-min",   no_argument,       0, 2},
-        {"restore-factory",no_argument,      0, 3},
+        {"set-max",   no_argument,       0, 1},
+        {"set-min",   no_argument,       0, 2},
+        {"set-factory",no_argument,      0, 3},
         {0, 0, 0, 0}
     };
 
@@ -160,13 +160,13 @@ int main(int argc, char *argv[])
             print_usage(argv[0]);
             return 0;
         case 1:
-            restore_mode = 'M';
+            set_power_mode = 'M';
             break;
         case 2:
-            restore_mode = 'm';
+            set_power_mode = 'm';
             break;
         case 3:
-            restore_mode = 'F';
+            set_power_mode = 'F';
             break;
         default:
             print_usage(argv[0]);
@@ -201,8 +201,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (restore_mode) {
-        do_restore(cfg, restore_mode);
+    if (set_power_mode) {
+        do_set_power(cfg, set_power_mode);
         config_free(cfg);
         return 0;
     }
