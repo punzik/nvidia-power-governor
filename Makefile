@@ -1,6 +1,6 @@
 CC      = cc
 CFLAGS  = -Wall -Wextra -O2 -std=c11
-LDFLAGS = -static
+LDFLAGS =
 
 TARGET  = nvidia-power-governor
 TEST    = test_runner
@@ -10,7 +10,7 @@ OBJS    = $(SRCS:.c=.o)
 
 PREFIX  = /usr/local
 
-.PHONY: all clean test install
+.PHONY: all clean test install static
 
 all: $(TARGET)
 
@@ -20,11 +20,14 @@ $(TARGET): $(OBJS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+static: LDFLAGS += -static
+static: $(TARGET)
+
 test: $(TEST)
 	./$(TEST)
 
 $(TEST): test.o config.o regulate.o
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) -o $@ $^
 
 install: $(TARGET)
 	install -Dm755 $(TARGET) $(PREFIX)/bin/$(TARGET)

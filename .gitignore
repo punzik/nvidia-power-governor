@@ -1,3 +1,4 @@
 *.o
 nvidia-power-governor
 test_runner
+result

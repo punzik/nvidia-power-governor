@@ -31,12 +31,14 @@ Requires a C compiler (gcc or clang) and a static libc.
 make install        # install to /usr/local/bin
 make test           # run unit tests (no GPU required)
 make clean          # remove build artifacts
+make static         # build with static linking
 ```
 
 ### Nix flake
 
 ```bash
-nix build           # build the binary
+nix build           # build the binary (dynamic)
+nix build .#static  # build the binary (static)
 nix develop         # enter dev shell
 nix run             # run the binary
 ```
