@@ -116,6 +116,62 @@ static int test_missing_section_conf(void)
     return 0;
 }
 
+static int test_no_value_conf(void)
+{
+    /* poll_interval= (empty value) -> strtol fails */
+    struct config *cfg = load_or_fail("tests/no_value.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_no_key_conf(void)
+{
+    /* =42 (empty key) -> unknown key -> NULL */
+    struct config *cfg = load_or_fail("tests/no_key.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_multi_equals_conf(void)
+{
+    /* poll_interval=1000=500 -> strtol stops at '=' -> NULL */
+    struct config *cfg = load_or_fail("tests/multi_equals.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_spaces_in_key_conf(void)
+{
+    /* "poll interval" (space instead of underscore) -> unknown key -> NULL */
+    struct config *cfg = load_or_fail("tests/spaces_in_key.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_long_value_conf(void)
+{
+    /* 512-char value -> exceeds line buffer -> NULL */
+    struct config *cfg = load_or_fail("tests/long_value.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_long_key_conf(void)
+{
+    /* 512-char section name -> exceeds line buffer -> NULL */
+    struct config *cfg = load_or_fail("tests/long_key.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_long_line_conf(void)
+{
+    /* 1024-char line -> exceeds line buffer -> NULL */
+    struct config *cfg = load_or_fail("tests/long_line.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
 /* ==================== Regulation algorithm tests ==================== */
 
 static struct gpu_config test_gpu_cfg;
@@ -228,6 +284,13 @@ int main(void)
     test("bad_value_conf", test_bad_value_conf);
     test("bad_key_conf", test_bad_key_conf);
     test("missing_section_conf", test_missing_section_conf);
+    test("no_value_conf", test_no_value_conf);
+    test("no_key_conf", test_no_key_conf);
+    test("multi_equals_conf", test_multi_equals_conf);
+    test("spaces_in_key_conf", test_spaces_in_key_conf);
+    test("long_value_conf", test_long_value_conf);
+    test("long_key_conf", test_long_key_conf);
+    test("long_line_conf", test_long_line_conf);
 
     printf("\nRegulation algorithm tests:\n");
     test("overheat", test_regulate_overheat);
