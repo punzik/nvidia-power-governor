@@ -8,7 +8,8 @@ struct gpu_config {
     int max_temp;   /* °C */
     int max_power;  /* W */
     int min_power;  /* W */
-    int power_step; /* W */
+    int power_step_up;   /* W — increase step */
+    int power_step_down; /* W — decrease step */
 };
 
 struct global_config {

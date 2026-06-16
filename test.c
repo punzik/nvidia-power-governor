@@ -44,13 +44,15 @@ static int test_valid_conf(void)
     assert(cfg->gpus[0].max_temp == 80);
     assert(cfg->gpus[0].max_power == 300);
     assert(cfg->gpus[0].min_power == 50);
-    assert(cfg->gpus[0].power_step == 1);
+    assert(cfg->gpus[0].power_step_up == 1);
+    assert(cfg->gpus[0].power_step_down == 1);
 
     assert(cfg->gpus[1].id == 1);
     assert(cfg->gpus[1].max_temp == 75);
     assert(cfg->gpus[1].max_power == 250);
     assert(cfg->gpus[1].min_power == 50);
-    assert(cfg->gpus[1].power_step == 1);
+    assert(cfg->gpus[1].power_step_up == 1);
+    assert(cfg->gpus[1].power_step_down == 1);
 
     config_free(cfg);
     return 0;
@@ -69,7 +71,8 @@ static int test_valid_single_conf(void)
     assert(cfg->gpus[0].max_temp == 70);
     assert(cfg->gpus[0].max_power == 200);
     assert(cfg->gpus[0].min_power == 100);
-    assert(cfg->gpus[0].power_step == 2);
+    assert(cfg->gpus[0].power_step_up == 2);
+    assert(cfg->gpus[0].power_step_down == 2);
 
     config_free(cfg);
     return 0;
@@ -187,7 +190,8 @@ static int test_whitespace_conf(void)
     assert(cfg->gpus[0].max_temp == 80);
     assert(cfg->gpus[0].max_power == 300);
     assert(cfg->gpus[0].min_power == 50);
-    assert(cfg->gpus[0].power_step == 1);
+    assert(cfg->gpus[0].power_step_up == 1);
+    assert(cfg->gpus[0].power_step_down == 1);
 
     config_free(cfg);
     return 0;
@@ -204,7 +208,8 @@ static void setup_regulate(void)
     test_gpu_cfg.max_temp = 80;
     test_gpu_cfg.max_power = 300;
     test_gpu_cfg.min_power = 50;
-    test_gpu_cfg.power_step = 10;
+    test_gpu_cfg.power_step_up = 10;
+    test_gpu_cfg.power_step_down = 10;
     test_hysteresis = 3;
 }
 

@@ -24,7 +24,7 @@ tests/        — тестовые конфиги
 
 **config.h**
 
-- `struct gpu_config`: `id` (int), `max_temp` (int °C), `max_power` (int W), `min_power` (int W), `power_step` (W)
+- `struct gpu_config`: `id` (int), `max_temp` (int °C), `max_power` (int W), `min_power` (int W), `power_step_up` (W), `power_step_down` (W)
 - `struct global_config`: `poll_interval` (ms), `avg_samples` (int), `hysteresis` (°C)
 - `struct config`: `global`, массив `gpu_configs`, `gpu_count`
 
@@ -48,13 +48,15 @@ hysteresis=3
 max_temp=80
 max_power=300
 min_power=50
-power_step=1
+power_step_up=1
+power_step_down=1
 
 [gpu.1]
 max_temp=75
 max_power=250
 min_power=50
-power_step=1
+power_step_up=1
+power_step_down=1
 ```
 
 Функции:

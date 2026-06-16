@@ -7,7 +7,7 @@ int regulate_compute(int avg_temp,
 {
     if (avg_temp >= gpu_cfg->max_temp) {
         /* Overheating: decrease power */
-        int new_power = current_power - gpu_cfg->power_step;
+        int new_power = current_power - gpu_cfg->power_step_down;
         if (new_power < gpu_cfg->min_power)
             new_power = gpu_cfg->min_power;
         return new_power;
@@ -15,7 +15,7 @@ int regulate_compute(int avg_temp,
 
     if (avg_temp <= gpu_cfg->max_temp - hysteresis) {
         /* Cool enough: increase power */
-        int new_power = current_power + gpu_cfg->power_step;
+        int new_power = current_power + gpu_cfg->power_step_up;
         if (new_power > gpu_cfg->max_power)
             new_power = gpu_cfg->max_power;
         return new_power;

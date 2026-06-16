@@ -212,10 +212,11 @@ int main(int argc, char *argv[])
 
     /* set initial power to max */
     for (int i = 0; i < cfg->gpu_count; i++) {
-        emit_log("GPU %d: initial power %d W (max %d, min %d, step %d, max_temp %d C)",
+        emit_log("GPU %d: initial power %d W (max %d, min %d, step_up %d, step_down %d, max_temp %d C)",
             i, states[i]->current_power,
             cfg->gpus[i].max_power, cfg->gpus[i].min_power,
-            cfg->gpus[i].power_step, cfg->gpus[i].max_temp);
+            cfg->gpus[i].power_step_up, cfg->gpus[i].power_step_down,
+            cfg->gpus[i].max_temp);
         gpu_set_power(i, states[i]->current_power, NULL, 0);
     }
 
