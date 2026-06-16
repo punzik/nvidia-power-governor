@@ -33,6 +33,14 @@ make test           # run unit tests (no GPU required)
 make clean          # remove build artifacts
 ```
 
+### Nix flake
+
+```bash
+nix build           # build the binary
+nix develop         # enter dev shell
+nix run             # run the binary
+```
+
 ## Usage
 
 ```
