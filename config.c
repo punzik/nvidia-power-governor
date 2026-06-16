@@ -121,11 +121,14 @@ static int parse_gpu(struct parse_ctx *ctx, const char *key, const char *val)
 struct config *config_load(const char *path)
 {
     FILE *f = fopen(path, "r");
-    if (!f)
+    if (!f) {
+        fprintf(stderr, "config: cannot open '%s'\n", path);
         return NULL;
+    }
 
     struct config *cfg = calloc(1, sizeof(*cfg));
     if (!cfg) {
+        fprintf(stderr, "config: out of memory\n");
         fclose(f);
         return NULL;
     }
@@ -148,6 +151,7 @@ struct config *config_load(const char *path)
         if (*s == '[') {
             char *end = strchr(s, ']');
             if (!end) {
+                fprintf(stderr, "config: '%s': line %d: missing ']'\n", path, line_num);
                 fclose(f);
                 config_free(cfg);
                 return NULL;
@@ -161,6 +165,7 @@ struct config *config_load(const char *path)
                 char *endp;
                 long idx = strtol(name + 4, &endp, 10);
                 if (*endp != '\0' || idx < 0 || idx >= MAX_GPUS) {
+                    fprintf(stderr, "config: '%s': line %d: invalid section name '[%s]'\n", path, line_num, s + 1);
                     fclose(f);
                     config_free(cfg);
                     return NULL;
@@ -171,6 +176,7 @@ struct config *config_load(const char *path)
                     cfg->gpu_count = (int)idx + 1;
                 cfg->gpus[idx].id = (int)idx;
             } else {
+                fprintf(stderr, "config: '%s': line %d: unknown section '[%s]'\n", path, line_num, name);
                 fclose(f);
                 config_free(cfg);
                 return NULL;
@@ -181,6 +187,7 @@ struct config *config_load(const char *path)
         /* key=value */
         char *eq = strchr(s, '=');
         if (!eq) {
+            fprintf(stderr, "config: '%s': line %d: expected 'key=value', got '%s'\n", path, line_num, s);
             fclose(f);
             config_free(cfg);
             return NULL;
@@ -190,6 +197,7 @@ struct config *config_load(const char *path)
         char *val = trim(eq + 1);
 
         if (ctx.section == SECTION_NONE) {
+            fprintf(stderr, "config: '%s': line %d: key '%s' outside of any section\n", path, line_num, key);
             fclose(f);
             config_free(cfg);
             return NULL;
@@ -202,6 +210,7 @@ struct config *config_load(const char *path)
             ret = parse_gpu(&ctx, key, val);
         }
         if (ret != 0) {
+            fprintf(stderr, "config: '%s': line %d: invalid value for '%s'\n", path, line_num, key);
             fclose(f);
             config_free(cfg);
             return NULL;
@@ -211,24 +220,29 @@ struct config *config_load(const char *path)
     fclose(f);
 
     /* validate: [global] must be present and complete */
-    if ((ctx.global_flags & G_ALL) != G_ALL)
-        goto err;
+    if ((ctx.global_flags & G_ALL) != G_ALL) {
+        fprintf(stderr, "config: '%s': missing required fields in [global]\n", path);
+        config_free(cfg);
+        return NULL;
+    }
 
     /* validate: each GPU section must be complete */
     for (int i = 0; i < cfg->gpu_count; i++) {
-        if ((ctx.gpu_flags[i] & GPU_ALL) != GPU_ALL)
-            goto err;
+        if ((ctx.gpu_flags[i] & GPU_ALL) != GPU_ALL) {
+            fprintf(stderr, "config: '%s': missing or incomplete [gpu.%d] section\n", path, i);
+            config_free(cfg);
+            return NULL;
+        }
     }
 
     /* must have at least one GPU */
-    if (cfg->gpu_count <= 0)
-        goto err;
+    if (cfg->gpu_count <= 0) {
+        fprintf(stderr, "config: '%s': no GPU sections defined\n", path);
+        config_free(cfg);
+        return NULL;
+    }
 
     return cfg;
-
-err:
-    config_free(cfg);
-    return NULL;
 }
 
 void config_free(struct config *cfg)
