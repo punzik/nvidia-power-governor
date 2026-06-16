@@ -4,6 +4,8 @@ A lightweight daemon that regulates NVIDIA GPU power limits based on chip temper
 
 Prevents GPU overheating under heavy load by smoothly adjusting the maximum power limit through `nvidia-smi`.
 
+> This code was written with the help of a local AI model: **Qwen3.6-27B-UD-Q6_K_XL** with MTP support.
+
 ## Features
 
 - Pure C, no external dependencies (libc only)
