@@ -19,7 +19,7 @@ static void die(const char *fmt, ...)
 
 /* Read a single integer value from nvidia-smi csv output.
  * Returns 0 on success, -1 on error. */
-static int query_gpu(const char *cmd, int *out)
+static int query_gpu_int(const char *cmd, int *out)
 {
     FILE *f = popen(cmd, "r");
     if (!f)
@@ -44,6 +44,36 @@ static int query_gpu(const char *cmd, int *out)
         return -1;
 
     *out = (int)val;
+    return 0;
+}
+
+/* Read a single float value from nvidia-smi csv output, round to int.
+ * Returns 0 on success, -1 on error. */
+static int query_gpu_float(const char *cmd, int *out)
+{
+    FILE *f = popen(cmd, "r");
+    if (!f)
+        return -1;
+
+    char line[64];
+    if (!fgets(line, sizeof(line), f)) {
+        pclose(f);
+        return -1;
+    }
+
+    int rc = pclose(f);
+    if (rc != 0)
+        return -1;
+
+    char *end;
+    double val = strtod(line, &end);
+    /* allow trailing whitespace/newline */
+    while (*end == ' ' || *end == '\n' || *end == '\r')
+        end++;
+    if (*end != '\0')
+        return -1;
+
+    *out = (int)(val + 0.5);
     return 0;
 }
 
@@ -75,7 +105,7 @@ int gpu_read_temp(int id)
              "nvidia-smi -i %d --query-gpu=temperature.gpu --format=csv,noheader,nounits", id);
 
     int temp;
-    if (query_gpu(cmd, &temp) != 0)
+    if (query_gpu_int(cmd, &temp) != 0)
         die("failed to read temperature for GPU %d", id);
 
     return temp;
@@ -99,11 +129,11 @@ int gpu_default_power(int id)
     snprintf(cmd, sizeof(cmd),
              "nvidia-smi -i %d --query-gpu=power.default_limit --format=csv,noheader,nounits", id);
 
-    int power_mw;
-    if (query_gpu(cmd, &power_mw) != 0)
+    int power_w;
+    if (query_gpu_float(cmd, &power_w) != 0)
         die("failed to read default power limit for GPU %d", id);
 
-    return power_mw / 1000;
+    return power_w;
 }
 
 struct gpu_state **gpu_state_init(const struct config *cfg)
