@@ -8,7 +8,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
+
+static void emit_timestamp(void)
+{
+    time_t now = time(NULL);
+    struct tm tm;
+    localtime_r(&now, &tm);
+    fprintf(stdout, "[%02d:%02d:%02d] ", tm.tm_hour, tm.tm_min, tm.tm_sec);
+}
 
 static void print_usage(const char *prog)
 {
@@ -31,6 +40,7 @@ static void emit_log(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
+    emit_timestamp();
     vfprintf(stdout, fmt, ap);
     va_end(ap);
     fprintf(stdout, "\n");
@@ -42,6 +52,7 @@ static void emit_verbose(const char *fmt, ...)
         return;
     va_list ap;
     va_start(ap, fmt);
+    emit_timestamp();
     vfprintf(stdout, fmt, ap);
     va_end(ap);
     fprintf(stdout, "\n");
@@ -51,9 +62,14 @@ static void emit_verbose(const char *fmt, ...)
 static void emit_indented(const char *buf)
 {
     const char *p = buf;
+    int first = 1;
     while (*p) {
         const char *nl = strchr(p, '\n');
         if (nl) {
+            if (first) {
+                emit_timestamp();
+                first = 0;
+            }
             fwrite("  ", 1, 2, stdout);
             fwrite(p, 1, (size_t)(nl - p), stdout);
             fprintf(stdout, "\n");
@@ -61,6 +77,10 @@ static void emit_indented(const char *buf)
         } else {
             /* last line without newline */
             if (*p) {
+                if (first) {
+                    emit_timestamp();
+                    first = 0;
+                }
                 fwrite("  ", 1, 2, stdout);
                 fwrite(p, 1, strlen(p), stdout);
                 fprintf(stdout, "\n");
