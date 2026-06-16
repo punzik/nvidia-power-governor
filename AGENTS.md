@@ -13,23 +13,53 @@ Guidance for coding agents working in this repository.
 
 ## Git commands — strict rules
 
-- Never run repository-changing Git commands without explicit user approval.
-- Repository-changing Git commands include, but are not limited to:
-  - `git commit`
-  - `git push`
-  - `git merge`
-  - `git rebase`
-  - `git reset`
-  - `git checkout`
-  - `git switch`
-  - `git branch -D`
-  - `git tag`
-  - any command that changes repository history, branches, tags, remotes, the index, or the working tree
-- Read-only Git commands are allowed when useful, for example:
-  - `git status`
-  - `git diff`
-  - `git log`
-  - `git show`
+Git commands are divided into three categories: read-only, local-changing, and remote-changing.
+
+### Remote-changing Git commands: absolutely forbidden
+
+The agent must never run remote-changing Git commands under any circumstances.
+
+Forbidden commands include, but are not limited to:
+
+- `git push`
+- `git push --force`
+- `git push --force-with-lease`
+- `git push origin ...`
+- `git push --tags`
+- `git push --delete ...`
+- any alias, script, shell command, IDE action, task runner, or tool call that performs a Git push
+- any command that uploads commits, branches, tags, refs, or repository state to a remote
+
+User approval does not override this rule.
+
+Even if the user says `push`, `yes push`, `да, push`, `commit and push`, or gives any other explicit push instruction, the agent must refuse to push and must explain that pushing is outside the allowed actions.
+
+The agent may prepare local changes or a local commit when allowed by the commit protocol below, but the user must perform any push manually.
+
+### Local-changing Git commands: approval required
+
+Never run local repository-changing Git commands without explicit user approval.
+
+Local repository-changing Git commands include, but are not limited to:
+
+- `git commit`
+- `git merge`
+- `git rebase`
+- `git reset`
+- `git checkout`
+- `git switch`
+- `git branch -D`
+- `git tag`
+- any command that changes repository history, branches, tags, the index, or the working tree
+
+### Read-only Git commands: allowed
+
+Read-only Git commands are allowed when useful, for example:
+
+- `git status`
+- `git diff`
+- `git log`
+- `git show`
 
 ## Git commits — hard approval protocol
 
@@ -119,9 +149,15 @@ Assistant: `Commit these changes?`
 
 User: `yes, also push it`
 
-Result: do not commit and do not push. The message contains extra words, so it is not exact approval.
+Result: do not commit and do not push. The message contains extra words, so it is not exact commit approval. Push is forbidden in all cases.
 
-## If a commit happens without approval
+Example 5:
+
+User: `Commit and push the changes.`
+
+Result: pushing is forbidden. The agent may ask whether to create a local commit, but must not push.
+
+## If a commit or push happens without approval
 
 If the agent accidentally commits without exact approval:
 
@@ -130,3 +166,12 @@ If the agent accidentally commits without exact approval:
 3. Do not push.
 4. Ask the user whether to keep or revert the commit.
 5. Update this file or propose an update to prevent recurrence.
+
+If the agent accidentally pushes:
+
+1. Immediately inform the user.
+2. Show the exact command that was run if known.
+3. Show the pushed branch, remote, and commit hash if known.
+4. Do not attempt to fix the remote state automatically.
+5. Ask the user what recovery action they want to perform manually.
+6. Treat the incident as a critical protocol failure.
