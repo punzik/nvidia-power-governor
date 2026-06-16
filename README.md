@@ -221,6 +221,10 @@ When `nvidia-smi` produces output (e.g. on error), it is captured and printed in
   Terminating early due to previous errors.
 ```
 
+## TODO
+
+- Add support for the [NVML](https://developer.nvidia.com/nvidia-management-library-nvml) (NVIDIA Management Library) API as an alternative to `nvidia-smi` subprocess calls. This would improve performance and reliability by avoiding process spawning on every poll cycle.
+
 ## License
 
 GNU General Public License v3
