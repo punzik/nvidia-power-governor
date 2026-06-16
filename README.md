@@ -71,6 +71,38 @@ Options:
 
 The program runs as a long-running foreground process. All output goes to stdout with `[HH:MM:SS]` timestamps.
 
+### Running as a systemd service
+
+Create `/etc/systemd/system/nvidia-power-governor.service`:
+
+```ini
+[Unit]
+Description=NVIDIA Power Governor
+After=nvidia-drivers.service
+Wants=nvidia-drivers.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/nvidia-power-governor -c /etc/nvidia-power-governor.conf
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start it:
+
+```bash
+sudo cp example.conf /etc/nvidia-power-governor.conf
+sudo systemctl daemon-reload
+sudo systemctl enable --now nvidia-power-governor
+```
+
+Adjust the `ExecStart` and config path in the unit file to match your setup.
+
 ### Restore modes
 
 Useful for quickly resetting power limits without restarting:
