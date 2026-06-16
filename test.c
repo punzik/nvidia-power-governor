@@ -38,18 +38,19 @@ static int test_valid_conf(void)
 
     assert(cfg->global.poll_interval == 1000);
     assert(cfg->global.avg_samples == 5);
-    assert(cfg->global.power_step == 1);
     assert(cfg->global.hysteresis == 3);
 
     assert(cfg->gpus[0].id == 0);
     assert(cfg->gpus[0].max_temp == 80);
     assert(cfg->gpus[0].max_power == 300);
     assert(cfg->gpus[0].min_power == 50);
+    assert(cfg->gpus[0].power_step == 1);
 
     assert(cfg->gpus[1].id == 1);
     assert(cfg->gpus[1].max_temp == 75);
     assert(cfg->gpus[1].max_power == 250);
     assert(cfg->gpus[1].min_power == 50);
+    assert(cfg->gpus[1].power_step == 1);
 
     config_free(cfg);
     return 0;
@@ -63,12 +64,12 @@ static int test_valid_single_conf(void)
 
     assert(cfg->global.poll_interval == 500);
     assert(cfg->global.avg_samples == 3);
-    assert(cfg->global.power_step == 2);
     assert(cfg->global.hysteresis == 5);
 
     assert(cfg->gpus[0].max_temp == 70);
     assert(cfg->gpus[0].max_power == 200);
     assert(cfg->gpus[0].min_power == 100);
+    assert(cfg->gpus[0].power_step == 2);
 
     config_free(cfg);
     return 0;
@@ -181,12 +182,12 @@ static int test_whitespace_conf(void)
 
     assert(cfg->global.poll_interval == 1000);
     assert(cfg->global.avg_samples == 5);
-    assert(cfg->global.power_step == 1);
     assert(cfg->global.hysteresis == 3);
 
     assert(cfg->gpus[0].max_temp == 80);
     assert(cfg->gpus[0].max_power == 300);
     assert(cfg->gpus[0].min_power == 50);
+    assert(cfg->gpus[0].power_step == 1);
 
     config_free(cfg);
     return 0;
@@ -195,7 +196,7 @@ static int test_whitespace_conf(void)
 /* ==================== Regulation algorithm tests ==================== */
 
 static struct gpu_config test_gpu_cfg;
-static struct global_config test_global_cfg;
+static int test_hysteresis = 3;
 
 static void setup_regulate(void)
 {
@@ -203,18 +204,15 @@ static void setup_regulate(void)
     test_gpu_cfg.max_temp = 80;
     test_gpu_cfg.max_power = 300;
     test_gpu_cfg.min_power = 50;
-
-    test_global_cfg.poll_interval = 1000;
-    test_global_cfg.avg_samples = 5;
-    test_global_cfg.power_step = 10;
-    test_global_cfg.hysteresis = 3;
+    test_gpu_cfg.power_step = 10;
+    test_hysteresis = 3;
 }
 
 static int test_regulate_overheat(void)
 {
     setup_regulate();
     /* temp 85 >= max_temp 80 -> decrease by 10 */
-    int new_power = regulate_compute(85, &test_gpu_cfg, &test_global_cfg, 200);
+    int new_power = regulate_compute(85, &test_gpu_cfg, test_hysteresis, 200);
     assert(new_power == 190);
     return 0;
 }
@@ -223,7 +221,7 @@ static int test_regulate_overheat_at_boundary(void)
 {
     setup_regulate();
     /* temp 80 == max_temp 80 -> decrease by 10 */
-    int new_power = regulate_compute(80, &test_gpu_cfg, &test_global_cfg, 200);
+    int new_power = regulate_compute(80, &test_gpu_cfg, test_hysteresis, 200);
     assert(new_power == 190);
     return 0;
 }
@@ -232,7 +230,7 @@ static int test_regulate_overheat_clamped_to_min(void)
 {
     setup_regulate();
     /* temp 85, current 55, step 10 -> 45, but min is 50 */
-    int new_power = regulate_compute(85, &test_gpu_cfg, &test_global_cfg, 55);
+    int new_power = regulate_compute(85, &test_gpu_cfg, test_hysteresis, 55);
     assert(new_power == 50);
     return 0;
 }
@@ -241,7 +239,7 @@ static int test_regulate_overheat_already_at_min(void)
 {
     setup_regulate();
     /* temp 85, current 50 (already min) -> stays 50 */
-    int new_power = regulate_compute(85, &test_gpu_cfg, &test_global_cfg, 50);
+    int new_power = regulate_compute(85, &test_gpu_cfg, test_hysteresis, 50);
     assert(new_power == 50);
     return 0;
 }
@@ -250,7 +248,7 @@ static int test_regulate_cool(void)
 {
     setup_regulate();
     /* temp 70 <= max_temp 80 - hysteresis 3 = 77 -> increase by 10 */
-    int new_power = regulate_compute(70, &test_gpu_cfg, &test_global_cfg, 200);
+    int new_power = regulate_compute(70, &test_gpu_cfg, test_hysteresis, 200);
     assert(new_power == 210);
     return 0;
 }
@@ -259,7 +257,7 @@ static int test_regulate_cool_at_boundary(void)
 {
     setup_regulate();
     /* temp 77 == max_temp 80 - hysteresis 3 -> increase by 10 */
-    int new_power = regulate_compute(77, &test_gpu_cfg, &test_global_cfg, 200);
+    int new_power = regulate_compute(77, &test_gpu_cfg, test_hysteresis, 200);
     assert(new_power == 210);
     return 0;
 }
@@ -268,7 +266,7 @@ static int test_regulate_cool_clamped_to_max(void)
 {
     setup_regulate();
     /* temp 70, current 305, step 10 -> 315, but max is 300 */
-    int new_power = regulate_compute(70, &test_gpu_cfg, &test_global_cfg, 305);
+    int new_power = regulate_compute(70, &test_gpu_cfg, test_hysteresis, 305);
     assert(new_power == 300);
     return 0;
 }
@@ -277,7 +275,7 @@ static int test_regulate_cool_already_at_max(void)
 {
     setup_regulate();
     /* temp 70, current 300 (already max) -> stays 300 */
-    int new_power = regulate_compute(70, &test_gpu_cfg, &test_global_cfg, 300);
+    int new_power = regulate_compute(70, &test_gpu_cfg, test_hysteresis, 300);
     assert(new_power == 300);
     return 0;
 }
@@ -286,7 +284,7 @@ static int test_regulate_in_hysteresis_band(void)
 {
     setup_regulate();
     /* temp 78: 78 < 80 and 78 > 77 -> no change */
-    int new_power = regulate_compute(78, &test_gpu_cfg, &test_global_cfg, 200);
+    int new_power = regulate_compute(78, &test_gpu_cfg, test_hysteresis, 200);
     assert(new_power == 200);
     return 0;
 }

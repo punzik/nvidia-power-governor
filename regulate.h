@@ -13,7 +13,7 @@
  */
 int regulate_compute(int avg_temp,
                      const struct gpu_config *gpu_cfg,
-                     const struct global_config *global_cfg,
+                     int hysteresis,
                      int current_power);
 
 #endif

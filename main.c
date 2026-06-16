@@ -186,9 +186,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    emit_verbose("config loaded: %d GPU(s), poll %d ms, samples %d, step %d W, hysteresis %d C",
+    emit_verbose("config loaded: %d GPU(s), poll %d ms, samples %d, hysteresis %d C",
                  cfg->gpu_count, cfg->global.poll_interval, cfg->global.avg_samples,
-                 cfg->global.power_step, cfg->global.hysteresis);
+                 cfg->global.hysteresis);
 
     int sys_gpu_count = gpu_count();
     emit_verbose("system GPU count: %d", sys_gpu_count);
@@ -212,16 +212,16 @@ int main(int argc, char *argv[])
 
     /* set initial power to max */
     for (int i = 0; i < cfg->gpu_count; i++) {
-        emit_log("GPU %d: initial power %d W (max %d, min %d, max_temp %d C)",
+        emit_log("GPU %d: initial power %d W (max %d, min %d, step %d, max_temp %d C)",
             i, states[i]->current_power,
             cfg->gpus[i].max_power, cfg->gpus[i].min_power,
-            cfg->gpus[i].max_temp);
+            cfg->gpus[i].power_step, cfg->gpus[i].max_temp);
         gpu_set_power(i, states[i]->current_power, NULL, 0);
     }
 
-    emit_log("starting regulation loop (poll %d ms, samples %d, step %d W, hysteresis %d C)",
+    emit_log("starting regulation loop (poll %d ms, samples %d, hysteresis %d C)",
         cfg->global.poll_interval, cfg->global.avg_samples,
-        cfg->global.power_step, cfg->global.hysteresis);
+        cfg->global.hysteresis);
 
     while (1) {
         /* read temperatures */
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
             struct gpu_state *s = states[i];
             int avg = compute_avg_temp(s);
 
-            int new_power = regulate_compute(avg, &cfg->gpus[i], &cfg->global,
+            int new_power = regulate_compute(avg, &cfg->gpus[i], cfg->global.hysteresis,
                                              s->current_power);
 
             emit_verbose("GPU %d: avg %d C, power %d -> %d W",

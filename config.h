@@ -8,12 +8,12 @@ struct gpu_config {
     int max_temp;   /* °C */
     int max_power;  /* W */
     int min_power;  /* W */
+    int power_step; /* W */
 };
 
 struct global_config {
     int poll_interval;  /* ms */
     int avg_samples;
-    int power_step;     /* W */
     int hysteresis;     /* °C */
 };
 

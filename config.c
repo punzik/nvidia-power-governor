@@ -47,14 +47,14 @@ struct parse_ctx {
 
 #define G_POLL_INTERVAL (1 << 0)
 #define G_AVG_SAMPLES   (1 << 1)
-#define G_POWER_STEP    (1 << 2)
-#define G_HYSTERESIS    (1 << 3)
-#define G_ALL           (G_POLL_INTERVAL | G_AVG_SAMPLES | G_POWER_STEP | G_HYSTERESIS)
+#define G_HYSTERESIS    (1 << 2)
+#define G_ALL           (G_POLL_INTERVAL | G_AVG_SAMPLES | G_HYSTERESIS)
 
-#define GPU_MAX_TEMP  (1 << 0)
-#define GPU_MAX_POWER (1 << 1)
-#define GPU_MIN_POWER (1 << 2)
-#define GPU_ALL       (GPU_MAX_TEMP | GPU_MAX_POWER | GPU_MIN_POWER)
+#define GPU_MAX_TEMP   (1 << 0)
+#define GPU_MAX_POWER  (1 << 1)
+#define GPU_MIN_POWER  (1 << 2)
+#define GPU_POWER_STEP (1 << 3)
+#define GPU_ALL        (GPU_MAX_TEMP | GPU_MAX_POWER | GPU_MIN_POWER | GPU_POWER_STEP)
 
 static void ctx_init(struct parse_ctx *ctx, struct config *cfg)
 {
@@ -77,11 +77,6 @@ static int parse_global(struct parse_ctx *ctx, const char *key, const char *val)
             return -1;
         g->avg_samples = v;
         ctx->global_flags |= G_AVG_SAMPLES;
-    } else if (strcmp(key, "power_step") == 0) {
-        if (parse_int(val, &v) != 0 || v <= 0)
-            return -1;
-        g->power_step = v;
-        ctx->global_flags |= G_POWER_STEP;
     } else if (strcmp(key, "hysteresis") == 0) {
         if (parse_int(val, &v) != 0 || v < 0)
             return -1;
@@ -114,6 +109,11 @@ static int parse_gpu(struct parse_ctx *ctx, const char *key, const char *val)
             return -1;
         gpu->min_power = v;
         ctx->gpu_flags[idx] |= GPU_MIN_POWER;
+    } else if (strcmp(key, "power_step") == 0) {
+        if (parse_int(val, &v) != 0 || v <= 0)
+            return -1;
+        gpu->power_step = v;
+        ctx->gpu_flags[idx] |= GPU_POWER_STEP;
     } else {
         return -1; /* unknown key */
     }

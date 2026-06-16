@@ -24,8 +24,8 @@ tests/        — тестовые конфиги
 
 **config.h**
 
-- `struct gpu_config`: `id` (int), `max_temp` (int °C), `max_power` (int W), `min_power` (int W)
-- `struct global_config`: `poll_interval` (ms), `avg_samples` (int), `power_step` (W), `hysteresis` (°C)
+- `struct gpu_config`: `id` (int), `max_temp` (int °C), `max_power` (int W), `min_power` (int W), `power_step` (W)
+- `struct global_config`: `poll_interval` (ms), `avg_samples` (int), `hysteresis` (°C)
 - `struct config`: `global`, массив `gpu_configs`, `gpu_count`
 
 **gpu.h**
@@ -42,18 +42,19 @@ INI-подобный формат:
 [global]
 poll_interval=1000
 avg_samples=5
-power_step=1
 hysteresis=3
 
 [gpu.0]
 max_temp=80
 max_power=300
 min_power=50
+power_step=1
 
 [gpu.1]
 max_temp=75
 max_power=250
 min_power=50
+power_step=1
 ```
 
 Функции:
@@ -90,8 +91,8 @@ min_power=50
 
 **regulate.h**
 
-- `regulate_compute(avg_temp, gpu_cfg, global_cfg, current_power) → new_power`
-  - Чистая функция: принимает среднюю температуру, конфиг GPU, глобальный конфиг и текущую мощность
+- `regulate_compute(avg_temp, gpu_cfg, hysteresis, current_power) → new_power`
+  - Чистая функция: принимает среднюю температуру, конфиг GPU, гистерезис и текущую мощность
   - Возвращает новую мощность (W) или ту же, если не изменилась
   - Логика:
     - Если `avg_temp >= max_temp` → `current_power - power_step` (но не ниже `min_power`)

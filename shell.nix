@@ -8,7 +8,7 @@ let gpu-burn-pkg = (
       }).gpu-burn;
 in
 mkShell {
-  packages = [ gnumake gpu-burn-pkg ];
+  packages = [ gnumake libc.static gpu-burn-pkg ];
 
   shellHook = ''
     export NIX_SHELL_NAME="NVPG"
