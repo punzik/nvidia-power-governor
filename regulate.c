@@ -1,5 +1,18 @@
 #include "regulate.h"
 
+int compute_avg_temp(struct gpu_state *state)
+{
+    int count = state->temp_count;
+    if (count == 0)
+        return 0;
+
+    long sum = 0;
+    for (int i = 0; i < count; i++)
+        sum += state->temp_buffer[i];
+
+    return (int)(sum / count);
+}
+
 int regulate_compute(int avg_temp,
                      const struct gpu_config *gpu_cfg,
                      int hysteresis,

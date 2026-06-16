@@ -116,19 +116,6 @@ static void emit_indented(const char *buf)
 }
 
 
-static int compute_avg_temp(struct gpu_state *state)
-{
-    int count = state->temp_count;
-    if (count == 0)
-        return 0;
-
-    long sum = 0;
-    for (int i = 0; i < count; i++)
-        sum += state->temp_buffer[i];
-
-    return (int)(sum / count);
-}
-
 static void do_set_power(const struct config *cfg, int mode)
 {
     for (int i = 0; i < cfg->gpu_count; i++) {
