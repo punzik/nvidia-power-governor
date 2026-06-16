@@ -166,6 +166,8 @@ power_step_down=10
 
 GPU indices (0, 1, …) must match the system's GPU numbering as reported by `nvidia-smi -L`. The number of `[gpu.N]` sections must exactly match the number of GPUs detected on the system.
 
+> **Note:** The maximum number of GPUs is limited to 8 (`MAX_GPUS=8`).
+
 ## How it works
 
 On each polling interval:

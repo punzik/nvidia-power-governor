@@ -181,8 +181,21 @@ struct config *config_load(const char *path)
                     return NULL;
                 }
                 long idx = strtol(num_start, &endp, 10);
-                if (endp == num_start || *endp != '\0' || idx < 0 || idx >= MAX_GPUS) {
+                if (endp == num_start || *endp != '\0') {
                     fprintf(stderr, "config: '%s': line %d: invalid section name '[%s]'\n", path, line_num, s + 1);
+                    fclose(f);
+                    config_free(cfg);
+                    return NULL;
+                }
+                if (idx < 0) {
+                    fprintf(stderr, "config: '%s': line %d: invalid section name '[%s]'\n", path, line_num, s + 1);
+                    fclose(f);
+                    config_free(cfg);
+                    return NULL;
+                }
+                if (idx >= MAX_GPUS) {
+                    fprintf(stderr, "config: '%s': line %d: GPU index %ld exceeds MAX_GPUS (%d)\n",
+                            path, line_num, idx, MAX_GPUS);
                     fclose(f);
                     config_free(cfg);
                     return NULL;
