@@ -23,8 +23,10 @@ static char *trim(char *s)
 static int parse_int(const char *str, int *out)
 {
     char *end;
+    if (*str == '\0')
+        return -1; /* empty string */
     long val = strtol(str, &end, 10);
-    if (*end != '\0' || val < INT_MIN || val > INT_MAX)
+    if (end == str || *end != '\0' || val < INT_MIN || val > INT_MAX)
         return -1;
     *out = (int)val;
     return 0;
@@ -170,9 +172,16 @@ struct config *config_load(const char *path)
             if (strcmp(name, "global") == 0) {
                 ctx.section = SECTION_GLOBAL;
             } else if (strncmp(name, "gpu.", 4) == 0) {
+                char *num_start = name + 4;
                 char *endp;
-                long idx = strtol(name + 4, &endp, 10);
-                if (*endp != '\0' || idx < 0 || idx >= MAX_GPUS) {
+                if (*num_start == '\0') {
+                    fprintf(stderr, "config: '%s': line %d: invalid section name '[%s]'\n", path, line_num, s + 1);
+                    fclose(f);
+                    config_free(cfg);
+                    return NULL;
+                }
+                long idx = strtol(num_start, &endp, 10);
+                if (endp == num_start || *endp != '\0' || idx < 0 || idx >= MAX_GPUS) {
                     fprintf(stderr, "config: '%s': line %d: invalid section name '[%s]'\n", path, line_num, s + 1);
                     fclose(f);
                     config_free(cfg);
@@ -248,6 +257,34 @@ struct config *config_load(const char *path)
         fprintf(stderr, "config: '%s': no GPU sections defined\n", path);
         config_free(cfg);
         return NULL;
+    }
+
+    /* semantic validation of global config */
+    if (cfg->global.poll_interval > 60000) {
+        fprintf(stderr, "config: '%s': poll_interval must be <= 60000\n", path);
+        config_free(cfg);
+        return NULL;
+    }
+    if (cfg->global.avg_samples > 100) {
+        fprintf(stderr, "config: '%s': avg_samples must be <= 100\n", path);
+        config_free(cfg);
+        return NULL;
+    }
+
+    /* semantic validation of each GPU config */
+    for (int i = 0; i < cfg->gpu_count; i++) {
+        struct gpu_config *gpu = &cfg->gpus[i];
+        if (gpu->max_temp <= 0) {
+            fprintf(stderr, "config: '%s': [gpu.%d] max_temp must be > 0\n", path, i);
+            config_free(cfg);
+            return NULL;
+        }
+        if (gpu->min_power > gpu->max_power) {
+            fprintf(stderr, "config: '%s': [gpu.%d] min_power (%d) > max_power (%d)\n",
+                    path, i, gpu->min_power, gpu->max_power);
+            config_free(cfg);
+            return NULL;
+        }
     }
 
     return cfg;

@@ -197,6 +197,62 @@ static int test_whitespace_conf(void)
     return 0;
 }
 
+static int test_empty_gpu_value_conf(void)
+{
+    /* max_temp= (empty value in [gpu.N]) -> parse_int rejects empty string -> NULL */
+    struct config *cfg = load_or_fail("tests/empty_gpu_value.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_empty_gpu_section_conf(void)
+{
+    /* [gpu.] (no index after 'gpu.') -> must be rejected -> NULL */
+    struct config *cfg = load_or_fail("tests/empty_gpu_section.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_invalid_min_gt_max_conf(void)
+{
+    /* min_power > max_power -> rejected -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_min_gt_max.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_invalid_max_temp_zero_conf(void)
+{
+    /* max_temp=0 -> rejected -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_max_temp_zero.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_invalid_max_temp_negative_conf(void)
+{
+    /* max_temp=-10 -> rejected -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_max_temp_negative.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_invalid_poll_interval_conf(void)
+{
+    /* poll_interval=70000 (> 60000) -> rejected -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_poll_interval.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_invalid_avg_samples_conf(void)
+{
+    /* avg_samples=200 (> 100) -> rejected -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_avg_samples.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
 /* ==================== Regulation algorithm tests ==================== */
 
 static struct gpu_config test_gpu_cfg;
@@ -315,6 +371,13 @@ int main(void)
     test("long_key_conf", test_long_key_conf);
     test("long_line_conf", test_long_line_conf);
     test("whitespace_conf", test_whitespace_conf);
+    test("empty_gpu_value_conf", test_empty_gpu_value_conf);
+    test("empty_gpu_section_conf", test_empty_gpu_section_conf);
+    test("invalid_min_gt_max_conf", test_invalid_min_gt_max_conf);
+    test("invalid_max_temp_zero_conf", test_invalid_max_temp_zero_conf);
+    test("invalid_max_temp_negative_conf", test_invalid_max_temp_negative_conf);
+    test("invalid_poll_interval_conf", test_invalid_poll_interval_conf);
+    test("invalid_avg_samples_conf", test_invalid_avg_samples_conf);
 
     printf("\nRegulation algorithm tests:\n");
     test("overheat", test_regulate_overheat);

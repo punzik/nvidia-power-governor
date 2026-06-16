@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 #include "gpu.h"
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,17 +8,6 @@
 #define GPU_QUERY_LINE_BUF  64
 #define GPU_CMD_BUF         128
 #define GPU_OUTPUT_BUF      256
-
-static void die(const char *fmt, ...)
-{
-    va_list ap;
-    fprintf(stderr, "error: ");
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-    fprintf(stderr, "\n");
-    exit(1);
-}
 
 /* Read a single integer value from nvidia-smi csv output.
  * Returns 0 on success, -1 on error. */
@@ -85,7 +73,7 @@ int gpu_count(void)
 {
     FILE *f = popen("nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits", "r");
     if (!f)
-        die("failed to run nvidia-smi");
+        return -1;
 
     int count = 0;
     char line[GPU_QUERY_LINE_BUF];
@@ -97,7 +85,7 @@ int gpu_count(void)
 
     int rc = pclose(f);
     if (rc != 0)
-        die("nvidia-smi failed");
+        return -1;
 
     return count;
 }
@@ -110,7 +98,7 @@ int gpu_read_temp(int id)
 
     int temp;
     if (query_gpu_int(cmd, &temp) != 0)
-        die("failed to read temperature for GPU %d", id);
+        return -1;
 
     return temp;
 }
@@ -121,10 +109,8 @@ int gpu_set_power(int id, int power_w, char *out, int out_size)
     snprintf(cmd, sizeof(cmd), "nvidia-smi -i %d -pl %d 2>&1", id, power_w);
 
     FILE *f = popen(cmd, "r");
-    if (!f) {
-        die("failed to run nvidia-smi for GPU %d", id);
+    if (!f)
         return -1;
-    }
 
     if (out && out_size > 0) {
         int i = 0;
@@ -133,6 +119,9 @@ int gpu_set_power(int id, int power_w, char *out, int out_size)
             out[i++] = (char)ch;
         }
         out[i] = '\0';
+        /* drain remaining output to avoid blocking */
+        while (fgetc(f) != EOF)
+            ;
     } else {
         /* discard output */
         while (fgetc(f) != EOF)
@@ -140,10 +129,8 @@ int gpu_set_power(int id, int power_w, char *out, int out_size)
     }
 
     int rc = pclose(f);
-    if (rc != 0) {
-        die("failed to set power limit for GPU %d", id);
+    if (rc != 0)
         return -1;
-    }
 
     return 0;
 }
@@ -156,7 +143,7 @@ int gpu_default_power(int id)
 
     int power_w;
     if (query_gpu_float(cmd, &power_w) != 0)
-        die("failed to read default power limit for GPU %d", id);
+        return -1;
 
     return power_w;
 }
@@ -168,12 +155,17 @@ struct gpu_state **gpu_state_init(const struct config *cfg)
 
     struct gpu_state **states = calloc(cfg->gpu_count, sizeof(*states));
     if (!states)
-        die("failed to allocate gpu_state array");
+        return NULL;
 
     for (int i = 0; i < cfg->gpu_count; i++) {
         states[i] = calloc(1, state_size);
-        if (!states[i])
-            die("failed to allocate gpu_state for GPU %d", i);
+        if (!states[i]) {
+            /* clean up already allocated states */
+            for (int j = 0; j < i; j++)
+                free(states[j]);
+            free(states);
+            return NULL;
+        }
 
         states[i]->id = i;
         states[i]->current_power = cfg->gpus[i].max_power;

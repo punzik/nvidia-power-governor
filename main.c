@@ -4,6 +4,7 @@
 #include "regulate.h"
 
 #include <getopt.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,6 +39,13 @@ static void print_usage(const char *prog)
 }
 
 static int verbose;
+static volatile sig_atomic_t stop_requested = 0;
+
+static void handle_signal(int sig)
+{
+    (void)sig;
+    stop_requested = 1;
+}
 
 static void emit_log(const char *fmt, ...)
 {
@@ -120,13 +128,20 @@ static void do_set_power(const struct config *cfg, int mode)
             break;
         case 'F':
             power = gpu_default_power(i);
+            if (power < 0) {
+                fprintf(stderr, "error: failed to read default power for GPU %d\n", i);
+                exit(1);
+            }
             break;
         default:
             return;
         }
         char buf[MAIN_OUTPUT_BUF] = {0};
         emit_log("GPU %d: setting power to %d W", i, power);
-        gpu_set_power(i, power, verbose ? buf : NULL, sizeof(buf));
+        if (gpu_set_power(i, power, verbose ? buf : NULL, sizeof(buf)) != 0) {
+            fprintf(stderr, "error: failed to set power for GPU %d\n", i);
+            exit(1);
+        }
         if (verbose && buf[0])
             emit_indented(buf);
     }
@@ -191,6 +206,11 @@ int main(int argc, char *argv[])
                  cfg->global.hysteresis);
 
     int sys_gpu_count = gpu_count();
+    if (sys_gpu_count < 0) {
+        fprintf(stderr, "error: failed to detect GPUs\n");
+        config_free(cfg);
+        return 1;
+    }
     emit_verbose("system GPU count: %d", sys_gpu_count);
 
     if (sys_gpu_count != cfg->gpu_count) {
@@ -209,6 +229,20 @@ int main(int argc, char *argv[])
 
     /* --- main loop --- */
     struct gpu_state **states = gpu_state_init(cfg);
+    if (!states) {
+        fprintf(stderr, "error: failed to initialize GPU state\n");
+        config_free(cfg);
+        return 1;
+    }
+
+    /* set up signal handlers for graceful shutdown */
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = handle_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
 
     /* set initial power to max */
     for (int i = 0; i < cfg->gpu_count; i++) {
@@ -217,17 +251,28 @@ int main(int argc, char *argv[])
             cfg->gpus[i].max_power, cfg->gpus[i].min_power,
             cfg->gpus[i].power_step_up, cfg->gpus[i].power_step_down,
             cfg->gpus[i].max_temp);
-        gpu_set_power(i, states[i]->current_power, NULL, 0);
+        if (gpu_set_power(i, states[i]->current_power, NULL, 0) != 0) {
+            fprintf(stderr, "error: failed to set initial power for GPU %d\n", i);
+            gpu_state_free(states, cfg->gpu_count);
+            config_free(cfg);
+            return 1;
+        }
     }
 
     emit_log("starting regulation loop (poll %d ms, samples %d, hysteresis %d C)",
         cfg->global.poll_interval, cfg->global.avg_samples,
         cfg->global.hysteresis);
 
-    while (1) {
+    while (!stop_requested) {
         /* read temperatures */
+        int iteration_ok = 1;
         for (int i = 0; i < cfg->gpu_count; i++) {
             int temp = gpu_read_temp(i);
+            if (temp < 0) {
+                fprintf(stderr, "warning: failed to read temperature for GPU %d, skipping iteration\n", i);
+                iteration_ok = 0;
+                break;
+            }
             struct gpu_state *s = states[i];
             int samples = cfg->global.avg_samples;
 
@@ -240,8 +285,15 @@ int main(int argc, char *argv[])
                          i, temp, s->temp_count, samples);
         }
 
+        if (!iteration_ok) {
+            usleep(cfg->global.poll_interval * MS_PER_SEC);
+            continue;
+        }
+
         /* compute and apply regulation */
         for (int i = 0; i < cfg->gpu_count; i++) {
+            if (stop_requested)
+                break;
             struct gpu_state *s = states[i];
             int avg = compute_avg_temp(s);
 
@@ -256,7 +308,9 @@ int main(int argc, char *argv[])
                     i, avg, s->current_power, new_power);
                 s->current_power = new_power;
                 char buf[MAIN_OUTPUT_BUF] = {0};
-                gpu_set_power(i, new_power, verbose ? buf : NULL, sizeof(buf));
+                if (gpu_set_power(i, new_power, verbose ? buf : NULL, sizeof(buf)) != 0) {
+                    fprintf(stderr, "warning: failed to set power for GPU %d, will retry next iteration\n", i);
+                }
                 if (verbose && buf[0])
                     emit_indented(buf);
             }
@@ -265,7 +319,7 @@ int main(int argc, char *argv[])
         usleep(cfg->global.poll_interval * MS_PER_SEC);
     }
 
-    /* unreachable, but for clarity */
+    emit_log("shutting down");
     gpu_state_free(states, cfg->gpu_count);
     config_free(cfg);
     return 0;
