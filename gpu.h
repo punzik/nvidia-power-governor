@@ -6,9 +6,9 @@
 struct gpu_state {
     int id;
     int current_power;     /* W */
-    int temp_buffer[];     /* flexible array, size = avg_samples */
     int temp_index;        /* next write position in buffer */
     int temp_count;        /* number of valid samples (until buffer is full) */
+    int temp_buffer[];     /* flexible array, size = avg_samples */
 };
 
 /* Count GPUs on the system via nvidia-smi. Returns count or -1 on error. */
