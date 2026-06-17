@@ -11,6 +11,42 @@ Guidance for coding agents working in this repository.
 - Ask for confirmation before broad, destructive, unrelated, irreversible, or ambiguous changes.
 - Do not treat a request to inspect, explain, or plan as permission to edit files.
 
+## Plan creation rules
+
+When the user asks to create or update a plan (saved as `*.md` in the repository root), the plan must be self-contained: a model reading it without any other context must be able to implement the changes without asking questions.
+
+### Structure
+
+A plan has two parts:
+
+1. **Task description** — what is being changed and why.
+2. **Implementation steps** — ordered list of file-level changes.
+
+### Task description must include
+
+- **Current state** — how the code works now (relevant structures, algorithm, data flow).
+- **New algorithm / behavior** — exact logic with pseudocode or formulas. No vague descriptions like "improve X" — show the actual conditionals, thresholds, and edge cases.
+- **Examples of behavior** — at least one worked-through scenario showing input → output for each code path (normal, boundary, priority conflict).
+- **Structural changes** — exact new/removed/renamed fields in every affected struct, with types and comments.
+- **Differences table** — "was / becomes" comparison for key parameters.
+
+### Implementation steps must include
+
+- Each step targets one or more related files.
+- For each file: list the exact changes (additions, removals, renames) with enough detail to apply without guessing.
+- Include the new function signatures with full parameter lists and return types.
+- Include pseudocode or code snippets for non-trivial logic.
+- If test files change: list which existing tests to remove, which new tests to add (with scenario description), and which existing tests to update.
+- Steps must be ordered by dependency: header files before implementation files, implementation before tests.
+
+### What to avoid
+
+- Do not write "update config parser" without listing the new keys and their validation rules.
+- Do not write "refactor main loop" without showing the before/after code blocks.
+- Do not omit edge cases (clamping, error paths, priority conflicts).
+- Do not leave fields unnamed or untyped — every struct field must have name, type, and description.
+- Do not mix steps for unrelated files in one step — group only files that change together (e.g., header + its implementation).
+
 ## Git commands — strict rules
 
 Git commands are divided into three categories: read-only, local-changing, and remote-changing.
