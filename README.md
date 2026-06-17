@@ -124,9 +124,9 @@ INI-like format with `[global]` and `[gpu.N]` sections. Comments are supported (
 # Polling interval in milliseconds
 poll_interval=1000
 # Number of temperature samples to average
-avg_samples=5
+temp_avg_samples=5
 # Number of power-draw samples to average
-draw_avg_samples=5
+power_avg_samples=5
 
 [gpu.0]
 # Upper temperature threshold (°C) — above this, decrease power
@@ -166,8 +166,8 @@ power_draw_offset_up=10
 | Parameter          | Description                                      |
 | ------------------ | ------------------------------------------------ |
 | `poll_interval`    | How often to read temperatures (ms)              |
-| `avg_samples`      | Number of temperature samples to average         |
-| `draw_avg_samples` | Number of power-draw samples to average          |
+| `temp_avg_samples`      | Number of temperature samples to average         |
+| `power_avg_samples` | Number of power-draw samples to average          |
 
 ### Per-GPU parameters
 

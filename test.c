@@ -37,8 +37,8 @@ static int test_valid_conf(void)
     assert(cfg->gpu_count == 2);
 
     assert(cfg->global.poll_interval == 1000);
-    assert(cfg->global.avg_samples == 5);
-    assert(cfg->global.draw_avg_samples == 5);
+    assert(cfg->global.temp_avg_samples == 5);
+    assert(cfg->global.power_avg_samples == 5);
 
     assert(cfg->gpus[0].temp_threshold_high == 80);
     assert(cfg->gpus[0].temp_threshold_low == 65);
@@ -71,8 +71,8 @@ static int test_valid_single_conf(void)
     assert(cfg->gpu_count == 1);
 
     assert(cfg->global.poll_interval == 500);
-    assert(cfg->global.avg_samples == 3);
-    assert(cfg->global.draw_avg_samples == 3);
+    assert(cfg->global.temp_avg_samples == 3);
+    assert(cfg->global.power_avg_samples == 3);
 
     assert(cfg->gpus[0].temp_threshold_high == 70);
     assert(cfg->gpus[0].temp_threshold_low == 55);
@@ -194,8 +194,8 @@ static int test_whitespace_conf(void)
     assert(cfg->gpu_count == 1);
 
     assert(cfg->global.poll_interval == 1000);
-    assert(cfg->global.avg_samples == 5);
-    assert(cfg->global.draw_avg_samples == 5);
+    assert(cfg->global.temp_avg_samples == 5);
+    assert(cfg->global.power_avg_samples == 5);
 
     assert(cfg->gpus[0].temp_threshold_high == 80);
     assert(cfg->gpus[0].temp_threshold_low == 65);
@@ -269,7 +269,7 @@ static int test_invalid_poll_interval_conf(void)
 
 static int test_invalid_avg_samples_conf(void)
 {
-    /* avg_samples=200 (> 100) -> rejected -> NULL */
+    /* temp_avg_samples=200 (> 100) -> rejected -> NULL */
     struct config *cfg = load_or_fail("tests/invalid_avg_samples.conf");
     assert(cfg == NULL);
     return 0;

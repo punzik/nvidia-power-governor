@@ -207,8 +207,8 @@ int main(int argc, char *argv[])
         return 1;
 
     emit_verbose("config loaded: %d GPU(s), poll %d ms, temp_samples %d, draw_samples %d",
-                 cfg->gpu_count, cfg->global.poll_interval, cfg->global.avg_samples,
-                 cfg->global.draw_avg_samples);
+                 cfg->gpu_count, cfg->global.poll_interval, cfg->global.temp_avg_samples,
+                 cfg->global.power_avg_samples);
 
     int sys_gpu_count = gpu_count();
     if (sys_gpu_count < 0) {
@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
     }
 
     emit_log("starting regulation loop (poll %d ms, temp_samples %d, draw_samples %d)",
-        cfg->global.poll_interval, cfg->global.avg_samples, cfg->global.draw_avg_samples);
+        cfg->global.poll_interval, cfg->global.temp_avg_samples, cfg->global.power_avg_samples);
 
     while (!stop_requested) {
         /* read temperatures and power draw */
@@ -289,8 +289,8 @@ int main(int argc, char *argv[])
                 break;
             }
             struct gpu_state *s = states[i];
-            int temp_samples = cfg->global.avg_samples;
-            int draw_samples = cfg->global.draw_avg_samples;
+            int temp_samples = cfg->global.temp_avg_samples;
+            int draw_samples = cfg->global.power_avg_samples;
 
             s->temp_buffer[s->temp_index] = temp;
             s->temp_index = (s->temp_index + 1) % temp_samples;

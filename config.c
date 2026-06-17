@@ -48,9 +48,9 @@ struct parse_ctx {
 };
 
 #define G_POLL_INTERVAL      (1 << 0)
-#define G_AVG_SAMPLES        (1 << 1)
-#define G_DRAW_AVG_SAMPLES   (1 << 2)
-#define G_ALL                (G_POLL_INTERVAL | G_AVG_SAMPLES | G_DRAW_AVG_SAMPLES)
+#define G_TEMP_AVG_SAMPLES   (1 << 1)
+#define G_POWER_AVG_SAMPLES  (1 << 2)
+#define G_ALL                (G_POLL_INTERVAL | G_TEMP_AVG_SAMPLES | G_POWER_AVG_SAMPLES)
 
 #define GPU_TEMP_THRESHOLD_HIGH    (1 << 0)
 #define GPU_TEMP_THRESHOLD_LOW     (1 << 1)
@@ -81,16 +81,16 @@ static int parse_global(struct parse_ctx *ctx, const char *key, const char *val)
             return -1;
         g->poll_interval = v;
         ctx->global_flags |= G_POLL_INTERVAL;
-    } else if (strcmp(key, "avg_samples") == 0) {
+    } else if (strcmp(key, "temp_avg_samples") == 0) {
         if (parse_int(val, &v) != 0 || v <= 0)
             return -1;
-        g->avg_samples = v;
-        ctx->global_flags |= G_AVG_SAMPLES;
-    } else if (strcmp(key, "draw_avg_samples") == 0) {
+        g->temp_avg_samples = v;
+        ctx->global_flags |= G_TEMP_AVG_SAMPLES;
+    } else if (strcmp(key, "power_avg_samples") == 0) {
         if (parse_int(val, &v) != 0 || v <= 0)
             return -1;
-        g->draw_avg_samples = v;
-        ctx->global_flags |= G_DRAW_AVG_SAMPLES;
+        g->power_avg_samples = v;
+        ctx->global_flags |= G_POWER_AVG_SAMPLES;
     } else {
         return -1; /* unknown key */
     }
@@ -303,13 +303,13 @@ struct config *config_load(const char *path)
         config_free(cfg);
         return NULL;
     }
-    if (cfg->global.avg_samples > MAX_AVG_SAMPLES) {
-        fprintf(stderr, "config: '%s': avg_samples must be <= %d\n", path, MAX_AVG_SAMPLES);
+    if (cfg->global.temp_avg_samples > MAX_AVG_SAMPLES) {
+        fprintf(stderr, "config: '%s': temp_avg_samples must be <= %d\n", path, MAX_AVG_SAMPLES);
         config_free(cfg);
         return NULL;
     }
-    if (cfg->global.draw_avg_samples > MAX_AVG_SAMPLES) {
-        fprintf(stderr, "config: '%s': draw_avg_samples must be <= %d\n", path, MAX_AVG_SAMPLES);
+    if (cfg->global.power_avg_samples > MAX_AVG_SAMPLES) {
+        fprintf(stderr, "config: '%s': power_avg_samples must be <= %d\n", path, MAX_AVG_SAMPLES);
         config_free(cfg);
         return NULL;
     }

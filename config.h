@@ -20,8 +20,8 @@ struct gpu_config {
 
 struct global_config {
     int poll_interval;      /* ms */
-    int avg_samples;
-    int draw_avg_samples;   /* number of power-draw samples to average */
+    int temp_avg_samples;
+    int power_avg_samples;   /* number of power-draw samples to average */
 };
 
 #define MAX_GPUS 8
