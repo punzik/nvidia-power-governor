@@ -258,7 +258,7 @@ int main(int argc, char *argv[])
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
 
-    /* set initial power to max */
+    /* set initial power to min */
     for (int i = 0; i < cfg->gpu_count; i++) {
         emit_log("GPU %d: initial power %d W (max %d, min %d, step_down_temp %d, step_down_draw %d, step_up_draw %d, thresh_high %d C, thresh_low %d C, draw_offset %d/%d W)",
             i, states[i]->power_limit,
