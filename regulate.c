@@ -14,26 +14,42 @@ int compute_avg_temp(struct gpu_state *state)
 }
 
 int regulate_compute(int avg_temp,
+                     int power_draw_w,
                      const struct gpu_config *gpu_cfg,
-                     int hysteresis,
-                     int current_power)
+                     int power_limit)
 {
-    if (avg_temp >= gpu_cfg->max_temp) {
-        /* Overheating: decrease power */
-        int new_power = current_power - gpu_cfg->power_step_down;
+    /* Zone 1: overheat — temperature priority, always decrease */
+    if (avg_temp >= gpu_cfg->temp_threshold_high) {
+        int new_power = power_limit - gpu_cfg->power_step_down_temp;
         if (new_power < gpu_cfg->min_power)
             new_power = gpu_cfg->min_power;
         return new_power;
     }
 
-    if (avg_temp <= gpu_cfg->max_temp - hysteresis) {
-        /* Cool enough: increase power */
-        int new_power = current_power + gpu_cfg->power_step_up;
+    /* Zone 3: middle band — no change */
+    if (avg_temp > gpu_cfg->temp_threshold_low)
+        return power_limit;
+
+    /* Zone 2: cool enough — draw-based regulation */
+    int threshold_down = power_limit - gpu_cfg->power_draw_offset_down;
+    int threshold_up   = power_limit - gpu_cfg->power_draw_offset_up;
+
+    if (power_draw_w <= threshold_down) {
+        /* Low draw — tighten limit */
+        int new_power = power_limit - gpu_cfg->power_step_down_draw;
+        if (new_power < gpu_cfg->min_power)
+            new_power = gpu_cfg->min_power;
+        return new_power;
+    }
+
+    if (power_draw_w >= threshold_up) {
+        /* High draw — allow more power */
+        int new_power = power_limit + gpu_cfg->power_step_up_draw;
         if (new_power > gpu_cfg->max_power)
             new_power = gpu_cfg->max_power;
         return new_power;
     }
 
-    /* Within hysteresis band: no change */
-    return current_power;
+    /* Draw hysteresis band — no change */
+    return power_limit;
 }

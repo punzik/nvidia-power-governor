@@ -148,6 +148,19 @@ int gpu_default_power(int id)
     return power_w;
 }
 
+int gpu_read_power_draw(int id)
+{
+    char cmd[GPU_CMD_BUF];
+    snprintf(cmd, sizeof(cmd),
+             "nvidia-smi -i %d --query-gpu=power.draw --format=csv,noheader,nounits", id);
+
+    int power_w;
+    if (query_gpu_float(cmd, &power_w) != 0)
+        return -1;
+
+    return power_w;
+}
+
 struct gpu_state **gpu_state_init(const struct config *cfg)
 {
     size_t state_size = sizeof(struct gpu_state) +
@@ -168,7 +181,7 @@ struct gpu_state **gpu_state_init(const struct config *cfg)
         }
 
         states[i]->id = i;
-        states[i]->current_power = cfg->gpus[i].max_power;
+        states[i]->power_limit = cfg->gpus[i].max_power;
         states[i]->temp_index = 0;
         states[i]->temp_count = 0;
     }

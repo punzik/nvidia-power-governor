@@ -18,9 +18,9 @@ Prevents GPU overheating under heavy load by smoothly adjusting the maximum powe
 - Optional static linking — no runtime dependencies when built with `make static`
 - INI-like configuration file
 - Per-GPU power limits and temperature thresholds
-- Separate step sizes for power increase and decrease (fast cooling, slow heating)
+- Three-zone regulation: overheat, draw-based, and middle band
 - Temperature averaging over multiple samples to avoid jitter
-- Hysteresis band to prevent oscillation
+- Draw-based hysteresis to prevent oscillation in cool zone
 - Restore modes to quickly reset power limits
 - Verbose logging with timestamps
 - Unit tests for config parser and regulation algorithm
@@ -124,27 +124,38 @@ INI-like format with `[global]` and `[gpu.N]` sections. Comments are supported (
 poll_interval=1000
 # Number of temperature samples to average
 avg_samples=5
-# Temperature hysteresis in degrees Celsius
-hysteresis=3
 
 [gpu.0]
-# Maximum temperature before reducing power (°C)
-max_temp=80
+# Upper temperature threshold (°C) — above this, decrease power
+temp_threshold_high=80
+# Lower temperature threshold (°C) — below this, use draw-based regulation
+temp_threshold_low=65
 # Maximum power limit (W)
 max_power=300
 # Minimum power limit (W)
 min_power=50
-# Power step when increasing (W)
-power_step_up=20
-# Power step when decreasing (W)
-power_step_down=10
+# Power decrease step when overheating (W)
+power_step_down_temp=15
+# Power decrease step when draw is low (W)
+power_step_down_draw=10
+# Power increase step when draw is high (W)
+power_step_up_draw=15
+# Draw offsets below current power limit (W)
+#   decrease threshold = power_limit - offset_down
+#   increase threshold = power_limit - offset_up
+power_draw_offset_down=20
+power_draw_offset_up=10
 
 [gpu.1]
-max_temp=75
+temp_threshold_high=75
+temp_threshold_low=60
 max_power=250
 min_power=50
-power_step_up=10
-power_step_down=10
+power_step_down_temp=10
+power_step_down_draw=10
+power_step_up_draw=10
+power_draw_offset_down=20
+power_draw_offset_up=10
 ```
 
 ### Global parameters
@@ -153,17 +164,20 @@ power_step_down=10
 | --------------- | ------------------------------------------------ |
 | `poll_interval` | How often to read temperatures (ms)              |
 | `avg_samples`   | Number of samples to average for each GPU        |
-| `hysteresis`    | Temperature hysteresis band (°C)                 |
 
 ### Per-GPU parameters
 
-| Parameter         | Description                                         |
-| ----------------- | --------------------------------------------------- |
-| `max_temp`        | Temperature threshold to start reducing power (°C)  |
-| `max_power`       | Maximum allowed power limit (W)                     |
-| `min_power`       | Minimum allowed power limit (W)                     |
-| `power_step_up`   | Power increase step when GPU cools down (W)         |
-| `power_step_down` | Power decrease step when GPU overheats (W)          |
+| Parameter                | Description                                         |
+| ------------------------ | --------------------------------------------------- |
+| `temp_threshold_high`    | Upper temperature threshold (°C)                    |
+| `temp_threshold_low`     | Lower temperature threshold (°C)                    |
+| `max_power`              | Maximum allowed power limit (W)                     |
+| `min_power`              | Minimum allowed power limit (W)                     |
+| `power_step_down_temp`   | Power decrease step when overheating (W)            |
+| `power_step_down_draw`   | Power decrease step when draw is low (W)            |
+| `power_step_up_draw`     | Power increase step when draw is high (W)           |
+| `power_draw_offset_down` | Offset below power_limit for decrease threshold (W) |
+| `power_draw_offset_up`   | Offset below power_limit for increase threshold (W) |
 
 GPU indices (0, 1, …) must match the system's GPU numbering as reported by `nvidia-smi -L`. The number of `[gpu.N]` sections must exactly match the number of GPUs detected on the system.
 
@@ -173,15 +187,28 @@ GPU indices (0, 1, …) must match the system's GPU numbering as reported by `nv
 
 On each polling interval:
 
-1. Read the current temperature of each GPU
-2. Store the reading in a ring buffer and compute the moving average
-3. Apply the regulation algorithm:
-   - If `avg_temp >= max_temp` → decrease power by `power_step_down` (not below `min_power`)
-   - If `avg_temp <= max_temp - hysteresis` → increase power by `power_step_up` (not above `max_power`)
-   - Otherwise → no change (within the hysteresis band)
+1. Read the current temperature and power draw of each GPU
+2. Store the temperature reading in a ring buffer and compute the moving average
+3. Apply the three-zone regulation algorithm:
+
+   **Zone 1 — Overheat** (`avg_temp >= temp_threshold_high`):
+   Decrease power by `power_step_down_temp` (not below `min_power`).
+   Temperature has absolute priority — draw is ignored.
+
+   **Zone 3 — Middle band** (`temp_threshold_low < avg_temp < temp_threshold_high`):
+   No change. The GPU is in an acceptable temperature range.
+
+   **Zone 2 — Cool** (`avg_temp <= temp_threshold_low`):
+   Draw-based regulation using offsets below the current power limit:
+   - `threshold_down = power_limit - power_draw_offset_down`
+   - `threshold_up   = power_limit - power_draw_offset_up`
+   - If `power_draw <= threshold_down` → decrease by `power_step_down_draw` (not below `min_power`)
+   - If `power_draw >= threshold_up` → increase by `power_step_up_draw` (not above `max_power`)
+   - Otherwise → no change (within the draw hysteresis band)
+
 4. Apply the new power limit via `nvidia-smi -i <id> -pl <W>`
 
-The separate `power_step_up` and `power_step_down` allow the GPU to cool down quickly when overheating, but warm up slowly to give the cooling system time to respond.
+The separate step sizes for decrease and increase allow the GPU to cool down quickly when overheating, but warm up slowly. The draw-based zone lets idle or lightly-loaded GPUs run at lower power limits, saving energy and reducing fan noise.
 
 ## Error handling
 
@@ -200,24 +227,24 @@ All output goes to stdout. Each line is prefixed with `[HH:MM:SS]`.
 Without `-v`, only power change events are logged:
 
 ```
-[14:30:01] GPU 0: initial power 300 W (max 300, min 50, step_up 20, step_down 10, max_temp 80 C)
-[14:30:01] starting regulation loop (poll 1000 ms, samples 5, hysteresis 3 C)
-[14:32:15] GPU 0: temp avg 82 C -> power 300 -> 290 W
+[14:30:01] GPU 0: initial power 300 W (max 300, min 50, step_down_temp 15, step_down_draw 10, step_up_draw 15, thresh_high 80 C, thresh_low 65 C, draw_offset 20/10 W)
+[14:30:01] starting regulation loop (poll 1000 ms, samples 5)
+[14:32:15] GPU 0: temp avg 82 C, draw 285 W -> power 300 -> 285 W
 ```
 
 With `-v`, additional debug information is shown:
 
 ```
-[14:30:01] config loaded: 2 GPU(s), poll 1000 ms, samples 5, hysteresis 3 C
+[14:30:01] config loaded: 2 GPU(s), poll 1000 ms, samples 5
 [14:30:01] system GPU count: 2
-[14:30:01] GPU 0: temp 78 C (sample 3/5)
-[14:30:01] GPU 0: avg 79 C, power 300 -> 300 W
+[14:30:01] GPU 0: temp 78 C, draw 250 W (sample 3/5)
+[14:30:01] GPU 0: avg 79 C, draw 250 W, power 300 -> 300 W
 ```
 
 When `nvidia-smi` produces output (e.g. on error), it is captured and printed indented:
 
 ```
-[14:32:15] GPU 0: temp avg 82 C -> power 300 -> 290 W
+[14:32:15] GPU 0: temp avg 82 C, draw 285 W -> power 300 -> 285 W
 [14:32:15]   Provided power limit is not a valid power limit...
   Terminating early due to previous errors.
 ```

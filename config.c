@@ -49,15 +49,20 @@ struct parse_ctx {
 
 #define G_POLL_INTERVAL (1 << 0)
 #define G_AVG_SAMPLES   (1 << 1)
-#define G_HYSTERESIS    (1 << 2)
-#define G_ALL           (G_POLL_INTERVAL | G_AVG_SAMPLES | G_HYSTERESIS)
+#define G_ALL           (G_POLL_INTERVAL | G_AVG_SAMPLES)
 
-#define GPU_MAX_TEMP      (1 << 0)
-#define GPU_MAX_POWER     (1 << 1)
-#define GPU_MIN_POWER     (1 << 2)
-#define GPU_POWER_STEP_UP  (1 << 3)
-#define GPU_POWER_STEP_DOWN (1 << 4)
-#define GPU_ALL           (GPU_MAX_TEMP | GPU_MAX_POWER | GPU_MIN_POWER | GPU_POWER_STEP_UP | GPU_POWER_STEP_DOWN)
+#define GPU_TEMP_THRESHOLD_HIGH    (1 << 0)
+#define GPU_TEMP_THRESHOLD_LOW     (1 << 1)
+#define GPU_MAX_POWER              (1 << 2)
+#define GPU_MIN_POWER              (1 << 3)
+#define GPU_POWER_STEP_DOWN_TEMP   (1 << 4)
+#define GPU_POWER_STEP_DOWN_DRAW   (1 << 5)
+#define GPU_POWER_STEP_UP_DRAW     (1 << 6)
+#define GPU_POWER_DRAW_OFFSET_DOWN (1 << 7)
+#define GPU_POWER_DRAW_OFFSET_UP   (1 << 8)
+#define GPU_ALL  (GPU_TEMP_THRESHOLD_HIGH | GPU_TEMP_THRESHOLD_LOW | GPU_MAX_POWER | \
+                  GPU_MIN_POWER | GPU_POWER_STEP_DOWN_TEMP | GPU_POWER_STEP_DOWN_DRAW | \
+                  GPU_POWER_STEP_UP_DRAW | GPU_POWER_DRAW_OFFSET_DOWN | GPU_POWER_DRAW_OFFSET_UP)
 
 static void ctx_init(struct parse_ctx *ctx, struct config *cfg)
 {
@@ -80,11 +85,6 @@ static int parse_global(struct parse_ctx *ctx, const char *key, const char *val)
             return -1;
         g->avg_samples = v;
         ctx->global_flags |= G_AVG_SAMPLES;
-    } else if (strcmp(key, "hysteresis") == 0) {
-        if (parse_int(val, &v) != 0 || v < 0)
-            return -1;
-        g->hysteresis = v;
-        ctx->global_flags |= G_HYSTERESIS;
     } else {
         return -1; /* unknown key */
     }
@@ -97,11 +97,16 @@ static int parse_gpu(struct parse_ctx *ctx, const char *key, const char *val)
     int idx = ctx->gpu_idx;
     struct gpu_config *gpu = &ctx->cfg->gpus[idx];
 
-    if (strcmp(key, "max_temp") == 0) {
-        if (parse_int(val, &v) != 0)
+    if (strcmp(key, "temp_threshold_high") == 0) {
+        if (parse_int(val, &v) != 0 || v <= 0)
             return -1;
-        gpu->max_temp = v;
-        ctx->gpu_flags[idx] |= GPU_MAX_TEMP;
+        gpu->temp_threshold_high = v;
+        ctx->gpu_flags[idx] |= GPU_TEMP_THRESHOLD_HIGH;
+    } else if (strcmp(key, "temp_threshold_low") == 0) {
+        if (parse_int(val, &v) != 0 || v <= 0)
+            return -1;
+        gpu->temp_threshold_low = v;
+        ctx->gpu_flags[idx] |= GPU_TEMP_THRESHOLD_LOW;
     } else if (strcmp(key, "max_power") == 0) {
         if (parse_int(val, &v) != 0 || v <= 0)
             return -1;
@@ -112,16 +117,31 @@ static int parse_gpu(struct parse_ctx *ctx, const char *key, const char *val)
             return -1;
         gpu->min_power = v;
         ctx->gpu_flags[idx] |= GPU_MIN_POWER;
-    } else if (strcmp(key, "power_step_up") == 0) {
+    } else if (strcmp(key, "power_step_down_temp") == 0) {
         if (parse_int(val, &v) != 0 || v <= 0)
             return -1;
-        gpu->power_step_up = v;
-        ctx->gpu_flags[idx] |= GPU_POWER_STEP_UP;
-    } else if (strcmp(key, "power_step_down") == 0) {
+        gpu->power_step_down_temp = v;
+        ctx->gpu_flags[idx] |= GPU_POWER_STEP_DOWN_TEMP;
+    } else if (strcmp(key, "power_step_down_draw") == 0) {
         if (parse_int(val, &v) != 0 || v <= 0)
             return -1;
-        gpu->power_step_down = v;
-        ctx->gpu_flags[idx] |= GPU_POWER_STEP_DOWN;
+        gpu->power_step_down_draw = v;
+        ctx->gpu_flags[idx] |= GPU_POWER_STEP_DOWN_DRAW;
+    } else if (strcmp(key, "power_step_up_draw") == 0) {
+        if (parse_int(val, &v) != 0 || v <= 0)
+            return -1;
+        gpu->power_step_up_draw = v;
+        ctx->gpu_flags[idx] |= GPU_POWER_STEP_UP_DRAW;
+    } else if (strcmp(key, "power_draw_offset_down") == 0) {
+        if (parse_int(val, &v) != 0 || v <= 0)
+            return -1;
+        gpu->power_draw_offset_down = v;
+        ctx->gpu_flags[idx] |= GPU_POWER_DRAW_OFFSET_DOWN;
+    } else if (strcmp(key, "power_draw_offset_up") == 0) {
+        if (parse_int(val, &v) != 0 || v <= 0)
+            return -1;
+        gpu->power_draw_offset_up = v;
+        ctx->gpu_flags[idx] |= GPU_POWER_DRAW_OFFSET_UP;
     } else {
         return -1; /* unknown key */
     }
@@ -287,14 +307,21 @@ struct config *config_load(const char *path)
     /* semantic validation of each GPU config */
     for (int i = 0; i < cfg->gpu_count; i++) {
         struct gpu_config *gpu = &cfg->gpus[i];
-        if (gpu->max_temp <= 0) {
-            fprintf(stderr, "config: '%s': [gpu.%d] max_temp must be > 0\n", path, i);
+        if (gpu->temp_threshold_low >= gpu->temp_threshold_high) {
+            fprintf(stderr, "config: '%s': [gpu.%d] temp_threshold_low (%d) >= temp_threshold_high (%d)\n",
+                    path, i, gpu->temp_threshold_low, gpu->temp_threshold_high);
             config_free(cfg);
             return NULL;
         }
         if (gpu->min_power > gpu->max_power) {
             fprintf(stderr, "config: '%s': [gpu.%d] min_power (%d) > max_power (%d)\n",
                     path, i, gpu->min_power, gpu->max_power);
+            config_free(cfg);
+            return NULL;
+        }
+        if (gpu->power_draw_offset_up >= gpu->power_draw_offset_down) {
+            fprintf(stderr, "config: '%s': [gpu.%d] power_draw_offset_up (%d) >= power_draw_offset_down (%d)\n",
+                    path, i, gpu->power_draw_offset_up, gpu->power_draw_offset_down);
             config_free(cfg);
             return NULL;
         }

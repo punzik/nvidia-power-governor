@@ -5,17 +5,20 @@
 
 struct gpu_config {
     int id;
-    int max_temp;   /* °C */
-    int max_power;  /* W */
-    int min_power;  /* W */
-    int power_step_up;   /* W — increase step */
-    int power_step_down; /* W — decrease step */
+    int temp_threshold_high;    /* °C — upper temperature threshold */
+    int temp_threshold_low;     /* °C — lower temperature threshold */
+    int max_power;              /* W */
+    int min_power;              /* W */
+    int power_step_down_temp;   /* W — decrease step when overheating */
+    int power_step_down_draw;   /* W — decrease step when draw is low */
+    int power_step_up_draw;     /* W — increase step when draw is high */
+    int power_draw_offset_down; /* W — offset below limit for decrease threshold */
+    int power_draw_offset_up;   /* W — offset below limit for increase threshold */
 };
 
 struct global_config {
     int poll_interval;  /* ms */
     int avg_samples;
-    int hysteresis;     /* °C */
 };
 
 #define MAX_GPUS 8

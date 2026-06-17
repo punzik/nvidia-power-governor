@@ -216,9 +216,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    emit_verbose("config loaded: %d GPU(s), poll %d ms, samples %d, hysteresis %d C",
-                 cfg->gpu_count, cfg->global.poll_interval, cfg->global.avg_samples,
-                 cfg->global.hysteresis);
+    emit_verbose("config loaded: %d GPU(s), poll %d ms, samples %d",
+                 cfg->gpu_count, cfg->global.poll_interval, cfg->global.avg_samples);
 
     int sys_gpu_count = gpu_count();
     if (sys_gpu_count < 0) {
@@ -261,12 +260,17 @@ int main(int argc, char *argv[])
 
     /* set initial power to max */
     for (int i = 0; i < cfg->gpu_count; i++) {
-        emit_log("GPU %d: initial power %d W (max %d, min %d, step_up %d, step_down %d, max_temp %d C)",
-            i, states[i]->current_power,
+        emit_log("GPU %d: initial power %d W (max %d, min %d, step_down_temp %d, step_down_draw %d, step_up_draw %d, thresh_high %d C, thresh_low %d C, draw_offset %d/%d W)",
+            i, states[i]->power_limit,
             cfg->gpus[i].max_power, cfg->gpus[i].min_power,
-            cfg->gpus[i].power_step_up, cfg->gpus[i].power_step_down,
-            cfg->gpus[i].max_temp);
-        if (gpu_set_power(i, states[i]->current_power, NULL, 0) != 0) {
+            cfg->gpus[i].power_step_down_temp,
+            cfg->gpus[i].power_step_down_draw,
+            cfg->gpus[i].power_step_up_draw,
+            cfg->gpus[i].temp_threshold_high,
+            cfg->gpus[i].temp_threshold_low,
+            cfg->gpus[i].power_draw_offset_down,
+            cfg->gpus[i].power_draw_offset_up);
+        if (gpu_set_power(i, states[i]->power_limit, NULL, 0) != 0) {
             fprintf(stderr, "error: failed to set initial power for GPU %d\n", i);
             gpu_state_free(states, cfg->gpu_count);
             config_free(cfg);
@@ -274,17 +278,23 @@ int main(int argc, char *argv[])
         }
     }
 
-    emit_log("starting regulation loop (poll %d ms, samples %d, hysteresis %d C)",
-        cfg->global.poll_interval, cfg->global.avg_samples,
-        cfg->global.hysteresis);
+    emit_log("starting regulation loop (poll %d ms, samples %d)",
+        cfg->global.poll_interval, cfg->global.avg_samples);
 
     while (!stop_requested) {
-        /* read temperatures */
+        /* read temperatures and power draw */
         int iteration_ok = 1;
+        int power_draws[MAX_GPUS];
         for (int i = 0; i < cfg->gpu_count; i++) {
             int temp = gpu_read_temp(i);
             if (temp < 0) {
                 fprintf(stderr, "warning: failed to read temperature for GPU %d, skipping iteration\n", i);
+                iteration_ok = 0;
+                break;
+            }
+            power_draws[i] = gpu_read_power_draw(i);
+            if (power_draws[i] < 0) {
+                fprintf(stderr, "warning: failed to read power draw for GPU %d, skipping iteration\n", i);
                 iteration_ok = 0;
                 break;
             }
@@ -296,8 +306,8 @@ int main(int argc, char *argv[])
             if (s->temp_count < samples)
                 s->temp_count++;
 
-            emit_verbose("GPU %d: temp %d C (sample %d/%d)",
-                         i, temp, s->temp_count, samples);
+            emit_verbose("GPU %d: temp %d C, draw %d W (sample %d/%d)",
+                         i, temp, power_draws[i], s->temp_count, samples);
         }
 
         if (!iteration_ok) {
@@ -312,16 +322,15 @@ int main(int argc, char *argv[])
             struct gpu_state *s = states[i];
             int avg = compute_avg_temp(s);
 
-            int new_power = regulate_compute(avg, &cfg->gpus[i], cfg->global.hysteresis,
-                                             s->current_power);
+            int new_power = regulate_compute(avg, power_draws[i], &cfg->gpus[i], s->power_limit);
 
-            emit_verbose("GPU %d: avg %d C, power %d -> %d W",
-                         i, avg, s->current_power, new_power);
+            emit_verbose("GPU %d: avg %d C, draw %d W, power %d -> %d W",
+                         i, avg, power_draws[i], s->power_limit, new_power);
 
-            if (new_power != s->current_power) {
-                emit_log("GPU %d: temp avg %d C -> power %d -> %d W",
-                    i, avg, s->current_power, new_power);
-                s->current_power = new_power;
+            if (new_power != s->power_limit) {
+                emit_log("GPU %d: temp avg %d C, draw %d W -> power %d -> %d W",
+                    i, avg, power_draws[i], s->power_limit, new_power);
+                s->power_limit = new_power;
                 char buf[MAIN_OUTPUT_BUF] = {0};
                 if (gpu_set_power(i, new_power, verbose ? buf : NULL, sizeof(buf)) != 0) {
                     fprintf(stderr, "warning: failed to set power for GPU %d, will retry next iteration\n", i);

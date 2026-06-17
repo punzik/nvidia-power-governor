@@ -5,7 +5,7 @@
 
 struct gpu_state {
     int id;
-    int current_power;     /* W */
+    int power_limit;       /* W */
     int temp_index;        /* next write position in buffer */
     int temp_count;        /* number of valid samples (until buffer is full) */
     int temp_buffer[];     /* flexible array, size = avg_samples */
@@ -23,6 +23,9 @@ int gpu_set_power(int id, int power_w, char *out, int out_size);
 
 /* Read factory default power limit. Returns W or -1 on error. */
 int gpu_default_power(int id);
+
+/* Read current power draw of a GPU. Returns W (rounded) or -1 on error. */
+int gpu_read_power_draw(int id);
 
 /* Allocate and initialize gpu_state array. Returns pointer or NULL on error. */
 struct gpu_state **gpu_state_init(const struct config *cfg);
