@@ -29,6 +29,9 @@ static int query_gpu_int(const char *cmd, int *out)
 
     char *end;
     long val = strtol(line, &end, 10);
+    /* must have consumed at least one character */
+    if (end == line)
+        return -1;
     /* allow trailing whitespace/newline */
     while (*end == ' ' || *end == '\n' || *end == '\r')
         end++;
@@ -59,6 +62,9 @@ static int query_gpu_float(const char *cmd, int *out)
 
     char *end;
     double val = strtod(line, &end);
+    /* must have consumed at least one character */
+    if (end == line)
+        return -1;
     /* allow trailing whitespace/newline */
     while (*end == ' ' || *end == '\n' || *end == '\r')
         end++;

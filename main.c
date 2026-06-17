@@ -211,10 +211,8 @@ int main(int argc, char *argv[])
     }
 
     struct config *cfg = config_load(config_path);
-    if (!cfg) {
-        fprintf(stderr, "error: failed to load config '%s'\n", config_path);
+    if (!cfg)
         return 1;
-    }
 
     emit_verbose("config loaded: %d GPU(s), poll %d ms, temp_samples %d, draw_samples %d",
                  cfg->gpu_count, cfg->global.poll_interval, cfg->global.avg_samples,
@@ -339,11 +337,13 @@ int main(int argc, char *argv[])
                     i, avg_temp, avg_draw, s->power_limit, new_power);
                 s->power_limit = new_power;
                 char buf[MAIN_OUTPUT_BUF] = {0};
-                if (gpu_set_power(i, new_power, verbose ? buf : NULL, sizeof(buf)) != 0) {
+                if (gpu_set_power(i, new_power, buf, sizeof(buf)) != 0) {
                     fprintf(stderr, "warning: failed to set power for GPU %d, will retry next iteration\n", i);
-                }
-                if (verbose && buf[0])
+                    if (buf[0])
+                        fprintf(stderr, "  nvidia-smi: %s", buf);
+                } else if (verbose && buf[0]) {
                     emit_indented(buf);
+                }
             }
         }
 

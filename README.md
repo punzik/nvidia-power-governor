@@ -215,17 +215,19 @@ The separate step sizes for decrease and increase allow the GPU to cool down qui
 
 ## Error handling
 
-The program exits immediately on any error:
+The program exits on startup errors:
 
 - Cannot open or parse the configuration file
 - GPU count mismatch between config and system
-- `nvidia-smi` command fails
+- `nvidia-smi` command fails during initialization
+
+During the regulation loop, transient `nvidia-smi` failures are logged as warnings and retried on the next poll cycle. The program does not exit on temporary read/write errors.
 
 Descriptive error messages are printed to stderr with file paths and line numbers where applicable.
 
 ## Output
 
-All output goes to stdout. Each line is prefixed with `[HH:MM:SS]`.
+All output goes to stdout. Lines are prefixed with `[HH:MM:SS]` when the `-t` flag is used.
 
 Without `-v`, only power change events are logged:
 

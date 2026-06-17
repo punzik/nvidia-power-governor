@@ -416,6 +416,104 @@ static int test_regulate_draw_clamped_to_max(void)
     return 0;
 }
 
+/* ==================== Average computation tests ==================== */
+
+static int test_avg_temp_empty(void)
+{
+    struct gpu_state s;
+    memset(&s, 0, sizeof(s));
+    assert(compute_avg_temp(&s) == 0);
+    return 0;
+}
+
+static int test_avg_temp_partial(void)
+{
+    struct gpu_state s;
+    memset(&s, 0, sizeof(s));
+    /* fill 3 of 5 samples: 80, 82, 78 */
+    s.temp_buffer[0] = 80;
+    s.temp_buffer[1] = 82;
+    s.temp_buffer[2] = 78;
+    s.temp_index = 3;
+    s.temp_count = 3;
+    /* (80 + 82 + 78) / 3 = 240 / 3 = 80 */
+    assert(compute_avg_temp(&s) == 80);
+    return 0;
+}
+
+static int test_avg_temp_full(void)
+{
+    struct gpu_state s;
+    memset(&s, 0, sizeof(s));
+    /* fill all 5 samples: 80, 82, 78, 81, 79 */
+    s.temp_buffer[0] = 80;
+    s.temp_buffer[1] = 82;
+    s.temp_buffer[2] = 78;
+    s.temp_buffer[3] = 81;
+    s.temp_buffer[4] = 79;
+    s.temp_index = 5;
+    s.temp_count = 5;
+    /* (80 + 82 + 78 + 81 + 79) / 5 = 400 / 5 = 80 */
+    assert(compute_avg_temp(&s) == 80);
+    return 0;
+}
+
+static int test_avg_temp_wrap_around(void)
+{
+    struct gpu_state s;
+    memset(&s, 0, sizeof(s));
+    /* simulate ring buffer that wrapped: capacity=3, index=1, count=3
+     * write order: buf[0]=80, buf[1]=82, buf[2]=78, then wrap to buf[0]=81
+     * so buf = {81, 82, 78}, count=3 */
+    s.temp_buffer[0] = 81;
+    s.temp_buffer[1] = 82;
+    s.temp_buffer[2] = 78;
+    s.temp_index = 1;
+    s.temp_count = 3;
+    /* (81 + 82 + 78) / 3 = 241 / 3 = 80 (integer division) */
+    assert(compute_avg_temp(&s) == 80);
+    return 0;
+}
+
+static int test_avg_draw_empty(void)
+{
+    struct gpu_state s;
+    memset(&s, 0, sizeof(s));
+    assert(compute_avg_draw(&s) == 0);
+    return 0;
+}
+
+static int test_avg_draw_partial(void)
+{
+    struct gpu_state s;
+    memset(&s, 0, sizeof(s));
+    /* fill 2 of 5 samples: 200, 210 */
+    s.draw_buffer[0] = 200;
+    s.draw_buffer[1] = 210;
+    s.draw_index = 2;
+    s.draw_count = 2;
+    /* (200 + 210) / 2 = 205 */
+    assert(compute_avg_draw(&s) == 205);
+    return 0;
+}
+
+static int test_avg_draw_full(void)
+{
+    struct gpu_state s;
+    memset(&s, 0, sizeof(s));
+    /* fill all 5 samples: 200, 210, 190, 205, 195 */
+    s.draw_buffer[0] = 200;
+    s.draw_buffer[1] = 210;
+    s.draw_buffer[2] = 190;
+    s.draw_buffer[3] = 205;
+    s.draw_buffer[4] = 195;
+    s.draw_index = 5;
+    s.draw_count = 5;
+    /* (200 + 210 + 190 + 205 + 195) / 5 = 1000 / 5 = 200 */
+    assert(compute_avg_draw(&s) == 200);
+    return 0;
+}
+
 /* ==================== Main ==================== */
 
 int main(void)
@@ -459,6 +557,15 @@ int main(void)
     test("temp_priority", test_regulate_temp_priority);
     test("draw_clamped_to_min", test_regulate_draw_clamped_to_min);
     test("draw_clamped_to_max", test_regulate_draw_clamped_to_max);
+
+    printf("\nAverage computation tests:\n");
+    test("avg_temp_empty", test_avg_temp_empty);
+    test("avg_temp_partial", test_avg_temp_partial);
+    test("avg_temp_full", test_avg_temp_full);
+    test("avg_temp_wrap_around", test_avg_temp_wrap_around);
+    test("avg_draw_empty", test_avg_draw_empty);
+    test("avg_draw_partial", test_avg_draw_partial);
+    test("avg_draw_full", test_avg_draw_full);
 
     printf("\n%d/%d tests passed\n", tests_passed, tests_run);
     return (tests_passed == tests_run) ? 0 : 1;
