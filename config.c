@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,21 @@ static int parse_int(const char *str, int *out)
     return 0;
 }
 
+/* Parse a single float value. Returns 0 on success, -1 on error. */
+static int parse_float(const char *str, float *out)
+{
+    char *end;
+    if (*str == '\0')
+        return -1; /* empty string */
+    double val = strtod(str, &end);
+    if (end == str || *end != '\0')
+        return -1;
+    if (isnan(val) || isinf(val))
+        return -1;
+    *out = (float)val;
+    return 0;
+}
+
 enum section {
     SECTION_NONE,
     SECTION_GLOBAL,
@@ -59,11 +75,11 @@ struct parse_ctx {
 #define GPU_POWER_STEP_DOWN_TEMP   (1 << 4)
 #define GPU_POWER_STEP_DOWN_DRAW   (1 << 5)
 #define GPU_POWER_STEP_UP_DRAW     (1 << 6)
-#define GPU_POWER_DRAW_OFFSET_DOWN (1 << 7)
-#define GPU_POWER_DRAW_OFFSET_UP   (1 << 8)
+#define GPU_POWER_LIMIT_DOWN_K     (1 << 7)
+#define GPU_POWER_LIMIT_UP_K       (1 << 8)
 #define GPU_ALL  (GPU_TEMP_THRESHOLD_HIGH | GPU_TEMP_THRESHOLD_LOW | GPU_MAX_POWER | \
                   GPU_MIN_POWER | GPU_POWER_STEP_DOWN_TEMP | GPU_POWER_STEP_DOWN_DRAW | \
-                  GPU_POWER_STEP_UP_DRAW | GPU_POWER_DRAW_OFFSET_DOWN | GPU_POWER_DRAW_OFFSET_UP)
+                  GPU_POWER_STEP_UP_DRAW | GPU_POWER_LIMIT_DOWN_K | GPU_POWER_LIMIT_UP_K)
 
 static void ctx_init(struct parse_ctx *ctx, struct config *cfg)
 {
@@ -138,16 +154,18 @@ static int parse_gpu(struct parse_ctx *ctx, const char *key, const char *val)
             return -1;
         gpu->power_step_up_draw = v;
         ctx->gpu_flags[idx] |= GPU_POWER_STEP_UP_DRAW;
-    } else if (strcmp(key, "power_draw_offset_down") == 0) {
-        if (parse_int(val, &v) != 0 || v <= 0)
+    } else if (strcmp(key, "power_limit_down_k") == 0) {
+        float fv;
+        if (parse_float(val, &fv) != 0 || fv <= 0.0f || fv >= 1.0f)
             return -1;
-        gpu->power_draw_offset_down = v;
-        ctx->gpu_flags[idx] |= GPU_POWER_DRAW_OFFSET_DOWN;
-    } else if (strcmp(key, "power_draw_offset_up") == 0) {
-        if (parse_int(val, &v) != 0 || v <= 0)
+        gpu->power_limit_down_k = fv;
+        ctx->gpu_flags[idx] |= GPU_POWER_LIMIT_DOWN_K;
+    } else if (strcmp(key, "power_limit_up_k") == 0) {
+        float fv;
+        if (parse_float(val, &fv) != 0 || fv <= 0.0f || fv >= 1.0f)
             return -1;
-        gpu->power_draw_offset_up = v;
-        ctx->gpu_flags[idx] |= GPU_POWER_DRAW_OFFSET_UP;
+        gpu->power_limit_up_k = fv;
+        ctx->gpu_flags[idx] |= GPU_POWER_LIMIT_UP_K;
     } else {
         return -1; /* unknown key */
     }
@@ -329,9 +347,9 @@ struct config *config_load(const char *path)
             config_free(cfg);
             return NULL;
         }
-        if (gpu->power_draw_offset_up >= gpu->power_draw_offset_down) {
-            fprintf(stderr, "config: '%s': [gpu.%d] power_draw_offset_up (%d) >= power_draw_offset_down (%d)\n",
-                    path, i, gpu->power_draw_offset_up, gpu->power_draw_offset_down);
+        if (gpu->power_limit_down_k >= gpu->power_limit_up_k) {
+            fprintf(stderr, "config: '%s': [gpu.%d] power_limit_down_k (%f) >= power_limit_up_k (%f)\n",
+                    path, i, gpu->power_limit_down_k, gpu->power_limit_up_k);
             config_free(cfg);
             return NULL;
         }

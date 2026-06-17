@@ -44,8 +44,8 @@ int regulate_compute(int avg_temp,
         return power_limit;
 
     /* Zone 2: cool enough — draw-based regulation */
-    int threshold_down = power_limit - gpu_cfg->power_draw_offset_down;
-    int threshold_up   = power_limit - gpu_cfg->power_draw_offset_up;
+    int threshold_down = (int)(power_limit * gpu_cfg->power_limit_down_k);
+    int threshold_up   = (int)(power_limit * gpu_cfg->power_limit_up_k);
 
     if (power_draw_w <= threshold_down) {
         /* Low draw — tighten limit */

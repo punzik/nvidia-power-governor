@@ -11,8 +11,8 @@ struct gpu_config {
     int power_step_down_temp;   /* W — decrease step when overheating */
     int power_step_down_draw;   /* W — decrease step when draw is low */
     int power_step_up_draw;     /* W — increase step when draw is high */
-    int power_draw_offset_down; /* W — offset below limit for decrease threshold */
-    int power_draw_offset_up;   /* W — offset below limit for increase threshold */
+    float power_limit_down_k;   /* (0,1) — fraction of limit for decrease threshold */
+    float power_limit_up_k;     /* (0,1) — fraction of limit for increase threshold */
 };
 
 #define MAX_AVG_SAMPLES      100

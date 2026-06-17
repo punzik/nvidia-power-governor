@@ -1,6 +1,6 @@
 CC      = cc
 CFLAGS  = -Wall -Wextra -O2 -std=c11
-LDFLAGS =
+LDFLAGS = -lm
 
 TARGET  = nvidia-power-governor
 TEST    = test_runner

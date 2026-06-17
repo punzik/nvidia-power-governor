@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 
     /* set initial power to min */
     for (int i = 0; i < cfg->gpu_count; i++) {
-        emit_log("GPU %d: initial power %d W (max %d, min %d, step_down_temp %d, step_down_draw %d, step_up_draw %d, thresh_high %d C, thresh_low %d C, draw_offset %d/%d W)",
+        emit_log("GPU %d: initial power %d W (max %d, min %d, step_down_temp %d, step_down_draw %d, step_up_draw %d, thresh_high %d C, thresh_low %d C, limit_k %f/%f)",
             i, states[i]->power_limit,
             cfg->gpus[i].max_power, cfg->gpus[i].min_power,
             cfg->gpus[i].power_step_down_temp,
@@ -259,8 +259,8 @@ int main(int argc, char *argv[])
             cfg->gpus[i].power_step_up_draw,
             cfg->gpus[i].temp_threshold_high,
             cfg->gpus[i].temp_threshold_low,
-            cfg->gpus[i].power_draw_offset_down,
-            cfg->gpus[i].power_draw_offset_up);
+            cfg->gpus[i].power_limit_down_k,
+            cfg->gpus[i].power_limit_up_k);
         if (gpu_set_power(i, states[i]->power_limit, NULL, 0) != 0) {
             fprintf(stderr, "error: failed to set initial power for GPU %d\n", i);
             gpu_state_free(states, cfg->gpu_count);
