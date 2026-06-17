@@ -230,7 +230,6 @@ struct config *config_load(const char *path)
                 ctx.gpu_idx = (int)idx;
                 if ((int)idx >= cfg->gpu_count)
                     cfg->gpu_count = (int)idx + 1;
-                cfg->gpus[idx].id = (int)idx;
             } else {
                 fprintf(stderr, "config: '%s': line %d: unknown section '[%s]'\n", path, line_num, name);
                 fclose(f);
