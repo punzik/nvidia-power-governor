@@ -47,8 +47,8 @@ static int test_valid_conf(void)
     assert(cfg->gpus[0].power_step_down_temp == 10);
     assert(cfg->gpus[0].power_step_down_draw == 10);
     assert(cfg->gpus[0].power_step_up_draw == 10);
-    assert(cfg->gpus[0].power_limit_down_k == 0.05f);
-    assert(cfg->gpus[0].power_limit_up_k == 0.10f);
+    assert(cfg->gpus[0].power_limit_down_k == 0.30f);
+    assert(cfg->gpus[0].power_limit_up_k == 0.70f);
 
     assert(cfg->gpus[1].temp_threshold_high == 75);
     assert(cfg->gpus[1].temp_threshold_low == 60);
@@ -57,8 +57,8 @@ static int test_valid_conf(void)
     assert(cfg->gpus[1].power_step_down_temp == 10);
     assert(cfg->gpus[1].power_step_down_draw == 10);
     assert(cfg->gpus[1].power_step_up_draw == 10);
-    assert(cfg->gpus[1].power_limit_down_k == 0.05f);
-    assert(cfg->gpus[1].power_limit_up_k == 0.10f);
+    assert(cfg->gpus[1].power_limit_down_k == 0.30f);
+    assert(cfg->gpus[1].power_limit_up_k == 0.70f);
 
     config_free(cfg);
     return 0;
@@ -81,8 +81,8 @@ static int test_valid_single_conf(void)
     assert(cfg->gpus[0].power_step_down_temp == 10);
     assert(cfg->gpus[0].power_step_down_draw == 5);
     assert(cfg->gpus[0].power_step_up_draw == 10);
-    assert(cfg->gpus[0].power_limit_down_k == 0.05f);
-    assert(cfg->gpus[0].power_limit_up_k == 0.10f);
+    assert(cfg->gpus[0].power_limit_down_k == 0.30f);
+    assert(cfg->gpus[0].power_limit_up_k == 0.70f);
 
     config_free(cfg);
     return 0;
@@ -204,8 +204,8 @@ static int test_whitespace_conf(void)
     assert(cfg->gpus[0].power_step_down_temp == 10);
     assert(cfg->gpus[0].power_step_down_draw == 10);
     assert(cfg->gpus[0].power_step_up_draw == 10);
-    assert(cfg->gpus[0].power_limit_down_k == 0.05f);
-    assert(cfg->gpus[0].power_limit_up_k == 0.10f);
+    assert(cfg->gpus[0].power_limit_down_k == 0.30f);
+    assert(cfg->gpus[0].power_limit_up_k == 0.70f);
 
     config_free(cfg);
     return 0;

@@ -146,8 +146,8 @@ power_step_up_draw=15
 # Draw coefficients (fraction of current power limit)
 #   decrease threshold = power_limit * power_limit_down_k
 #   increase threshold = power_limit * power_limit_up_k
-power_limit_down_k=0.07
-power_limit_up_k=0.03
+power_limit_down_k=0.30
+power_limit_up_k=0.70
 
 [gpu.1]
 temp_threshold_high=75
@@ -157,8 +157,8 @@ min_power=50
 power_step_down_temp=10
 power_step_down_draw=10
 power_step_up_draw=10
-power_limit_down_k=0.07
-power_limit_up_k=0.03
+power_limit_down_k=0.30
+power_limit_up_k=0.70
 ```
 
 ### Global parameters
@@ -233,7 +233,7 @@ All output goes to stdout. Lines are prefixed with `[HH:MM:SS]` when the `-t` fl
 Without `-v`, only power change events are logged:
 
 ```
-[14:30:01] GPU 0: initial power 50 W (max 300, min 50, step_down_temp 15, step_down_draw 10, step_up_draw 15, thresh_high 80 C, thresh_low 65 C, limit_k 0.07/0.03)
+[14:30:01] GPU 0: initial power 50 W (max 300, min 50, step_down_temp 15, step_down_draw 10, step_up_draw 15, thresh_high 80 C, thresh_low 65 C, limit_k 0.30/0.70)
 [14:30:01] starting regulation loop (poll 1000 ms, temp_samples 5, draw_samples 5)
 [14:32:15] GPU 0: avg_temp 82 C, avg_draw 285 W -> power 270 -> 285 W
 ```
