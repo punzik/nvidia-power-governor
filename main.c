@@ -327,14 +327,16 @@ int main(int argc, char *argv[])
             if (new_power != s->power_limit) {
                 emit_log("GPU %d: avg_temp %d C, avg_draw %d W -> power %d -> %d W",
                     i, avg_temp, avg_draw, s->power_limit, new_power);
-                s->power_limit = new_power;
                 char buf[MAIN_OUTPUT_BUF] = {0};
                 if (gpu_set_power(i, new_power, buf, sizeof(buf)) != 0) {
                     fprintf(stderr, "warning: failed to set power for GPU %d, will retry next iteration\n", i);
                     if (buf[0])
                         fprintf(stderr, "  nvidia-smi: %s", buf);
-                } else if (verbose && buf[0]) {
-                    emit_indented(buf);
+                } else {
+                    /* commit the new limit only after the GPU actually accepted it */
+                    s->power_limit = new_power;
+                    if (verbose && buf[0])
+                        emit_indented(buf);
                 }
             }
         }

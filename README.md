@@ -235,7 +235,7 @@ Without `-v`, only power change events are logged:
 ```
 [14:30:01] GPU 0: initial power 50 W (max 300, min 50, step_down_temp 15, step_down_draw 10, step_up_draw 15, thresh_high 80 C, thresh_low 65 C, limit_k 0.30/0.70)
 [14:30:01] starting regulation loop (poll 1000 ms, temp_samples 5, draw_samples 5)
-[14:32:15] GPU 0: avg_temp 82 C, avg_draw 285 W -> power 270 -> 285 W
+[14:32:15] GPU 0: avg_temp 82 C, avg_draw 285 W -> power 300 -> 285 W
 ```
 
 With `-v`, additional debug information is shown:
