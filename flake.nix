@@ -13,7 +13,7 @@
       mkPackage = pkgs: static: pkgs.stdenv.mkDerivation {
         name = "nvidia-power-governor" + (if static then "-static" else "");
         src = ./.;
-        buildInputs = [ pkgs.gnumake pkgs.gcc ] ++ (if static then [ pkgs.libc.static ] else []);
+        nativeBuildInputs = (if static then [ pkgs.glibc.static ] else []);
         buildPhase = (if static then "make static" else "make");
         installPhase = "install -Dm755 nvidia-power-governor $out/bin/nvidia-power-governor";
       };
