@@ -4,7 +4,6 @@
 #include "config.h"
 
 struct gpu_state {
-    int id;
     int power_limit;              /* W */
     int temp_index;               /* next write position in temp buffer */
     int temp_count;               /* number of valid temp samples */

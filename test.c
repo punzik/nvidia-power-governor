@@ -40,7 +40,6 @@ static int test_valid_conf(void)
     assert(cfg->global.avg_samples == 5);
     assert(cfg->global.draw_avg_samples == 5);
 
-    assert(cfg->gpus[0].id == 0);
     assert(cfg->gpus[0].temp_threshold_high == 80);
     assert(cfg->gpus[0].temp_threshold_low == 65);
     assert(cfg->gpus[0].max_power == 300);
@@ -51,7 +50,6 @@ static int test_valid_conf(void)
     assert(cfg->gpus[0].power_draw_offset_down == 20);
     assert(cfg->gpus[0].power_draw_offset_up == 10);
 
-    assert(cfg->gpus[1].id == 1);
     assert(cfg->gpus[1].temp_threshold_high == 75);
     assert(cfg->gpus[1].temp_threshold_low == 60);
     assert(cfg->gpus[1].max_power == 250);
@@ -283,7 +281,6 @@ static struct gpu_config test_gpu_cfg;
 
 static void setup_regulate(void)
 {
-    test_gpu_cfg.id = 0;
     test_gpu_cfg.temp_threshold_high = 80;
     test_gpu_cfg.temp_threshold_low = 65;
     test_gpu_cfg.max_power = 300;

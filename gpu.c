@@ -183,7 +183,6 @@ struct gpu_state **gpu_state_init(const struct config *cfg)
             return NULL;
         }
 
-        states[i]->id = i;
         states[i]->power_limit = cfg->gpus[i].min_power;
         states[i]->temp_index = 0;
         states[i]->temp_count = 0;

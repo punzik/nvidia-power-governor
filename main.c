@@ -15,8 +15,7 @@
 
 #define MAIN_OUTPUT_BUF 256
 
-/* Sleep for the given number of milliseconds, handling EINTR.
- * Returns 0 on success, -1 on error. */
+/* Sleep for the given number of milliseconds, handling EINTR. */
 static int safe_sleep_ms(int ms)
 {
     struct timespec ts;
@@ -90,19 +89,15 @@ static void emit_verbose(const char *fmt, ...)
     fflush(stdout);
 }
 
-/* Print each line of a multi-line buffer with two-space indentation. */
+/* Print each line of a multi-line buffer with two-space indentation and per-line timestamps. */
 static void emit_indented(const char *buf)
 {
     const char *p = buf;
-    int first = 1;
     while (*p) {
         const char *nl = strchr(p, '\n');
         if (nl) {
-            if (first) {
-                if (show_timestamp)
-                    emit_timestamp();
-                first = 0;
-            }
+            if (show_timestamp)
+                emit_timestamp();
             fwrite("  ", 1, 2, stdout);
             fwrite(p, 1, (size_t)(nl - p), stdout);
             fprintf(stdout, "\n");
@@ -110,11 +105,8 @@ static void emit_indented(const char *buf)
         } else {
             /* last line without newline */
             if (*p) {
-                if (first) {
-                    if (show_timestamp)
-                        emit_timestamp();
-                    first = 0;
-                }
+                if (show_timestamp)
+                    emit_timestamp();
                 fwrite("  ", 1, 2, stdout);
                 fwrite(p, 1, strlen(p), stdout);
                 fprintf(stdout, "\n");

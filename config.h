@@ -4,7 +4,6 @@
 #include <stddef.h>
 
 struct gpu_config {
-    int id;
     int temp_threshold_high;    /* °C — upper temperature threshold */
     int temp_threshold_low;     /* °C — lower temperature threshold */
     int max_power;              /* W */
