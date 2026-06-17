@@ -47,8 +47,8 @@ static int test_valid_conf(void)
     assert(cfg->gpus[0].power_step_down_temp == 10);
     assert(cfg->gpus[0].power_step_down_draw == 10);
     assert(cfg->gpus[0].power_step_up_draw == 10);
-    assert(cfg->gpus[0].power_draw_offset_down == 20);
-    assert(cfg->gpus[0].power_draw_offset_up == 10);
+    assert(cfg->gpus[0].power_limit_down_k == 0.05f);
+    assert(cfg->gpus[0].power_limit_up_k == 0.10f);
 
     assert(cfg->gpus[1].temp_threshold_high == 75);
     assert(cfg->gpus[1].temp_threshold_low == 60);
@@ -57,8 +57,8 @@ static int test_valid_conf(void)
     assert(cfg->gpus[1].power_step_down_temp == 10);
     assert(cfg->gpus[1].power_step_down_draw == 10);
     assert(cfg->gpus[1].power_step_up_draw == 10);
-    assert(cfg->gpus[1].power_draw_offset_down == 20);
-    assert(cfg->gpus[1].power_draw_offset_up == 10);
+    assert(cfg->gpus[1].power_limit_down_k == 0.05f);
+    assert(cfg->gpus[1].power_limit_up_k == 0.10f);
 
     config_free(cfg);
     return 0;
@@ -81,8 +81,8 @@ static int test_valid_single_conf(void)
     assert(cfg->gpus[0].power_step_down_temp == 10);
     assert(cfg->gpus[0].power_step_down_draw == 5);
     assert(cfg->gpus[0].power_step_up_draw == 10);
-    assert(cfg->gpus[0].power_draw_offset_down == 20);
-    assert(cfg->gpus[0].power_draw_offset_up == 10);
+    assert(cfg->gpus[0].power_limit_down_k == 0.05f);
+    assert(cfg->gpus[0].power_limit_up_k == 0.10f);
 
     config_free(cfg);
     return 0;
@@ -204,8 +204,8 @@ static int test_whitespace_conf(void)
     assert(cfg->gpus[0].power_step_down_temp == 10);
     assert(cfg->gpus[0].power_step_down_draw == 10);
     assert(cfg->gpus[0].power_step_up_draw == 10);
-    assert(cfg->gpus[0].power_draw_offset_down == 20);
-    assert(cfg->gpus[0].power_draw_offset_up == 10);
+    assert(cfg->gpus[0].power_limit_down_k == 0.05f);
+    assert(cfg->gpus[0].power_limit_up_k == 0.10f);
 
     config_free(cfg);
     return 0;
@@ -243,18 +243,50 @@ static int test_invalid_threshold_low_ge_high_conf(void)
     return 0;
 }
 
-static int test_invalid_draw_offset_up_ge_down_conf(void)
+static int test_invalid_down_k_ge_up_k_conf(void)
 {
-    /* power_draw_offset_up >= power_draw_offset_down -> rejected -> NULL */
-    struct config *cfg = load_or_fail("tests/invalid_draw_offset_up_ge_down.conf");
+    /* power_limit_down_k (0.20) >= power_limit_up_k (0.10) -> rejected -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_down_k_ge_up_k.conf");
     assert(cfg == NULL);
     return 0;
 }
 
-static int test_invalid_draw_offset_up_eq_down_conf(void)
+static int test_invalid_down_k_eq_up_k_conf(void)
 {
-    /* power_draw_offset_up == power_draw_offset_down -> rejected -> NULL */
-    struct config *cfg = load_or_fail("tests/invalid_draw_offset_up_eq_down.conf");
+    /* power_limit_down_k (0.10) == power_limit_up_k (0.10) -> rejected -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_down_k_eq_up_k.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_invalid_down_k_zero_conf(void)
+{
+    /* power_limit_down_k=0.0 -> rejected (must be > 0) -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_down_k_zero.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_invalid_down_k_gt_one_conf(void)
+{
+    /* power_limit_down_k=1.5 -> rejected (must be < 1) -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_down_k_gt_one.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_invalid_down_k_negative_conf(void)
+{
+    /* power_limit_down_k=-0.5 -> rejected (must be > 0) -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_down_k_negative.conf");
+    assert(cfg == NULL);
+    return 0;
+}
+
+static int test_invalid_down_k_bad_float_conf(void)
+{
+    /* power_limit_down_k=abc -> parse_float fails -> NULL */
+    struct config *cfg = load_or_fail("tests/invalid_down_k_bad_float.conf");
     assert(cfg == NULL);
     return 0;
 }
@@ -288,8 +320,8 @@ static void setup_regulate(void)
     test_gpu_cfg.power_step_down_temp = 10;
     test_gpu_cfg.power_step_down_draw = 10;
     test_gpu_cfg.power_step_up_draw = 15;
-    test_gpu_cfg.power_draw_offset_down = 20;
-    test_gpu_cfg.power_draw_offset_up = 10;
+    test_gpu_cfg.power_limit_down_k = 0.10f;
+    test_gpu_cfg.power_limit_up_k = 0.20f;
 }
 
 static int test_regulate_overheat(void)
@@ -332,9 +364,9 @@ static int test_regulate_cool_low_draw(void)
 {
     setup_regulate();
     /* temp 60 <= threshold_low 65 -> draw zone
-     * threshold_down = 200 - 20 = 180, threshold_up = 200 - 10 = 190
-     * draw 170 <= 180 -> decrease by step_down_draw 10 */
-    int new_power = regulate_compute(60, 170, &test_gpu_cfg, 200);
+     * threshold_down = 200 * 0.10 = 20, threshold_up = 200 * 0.20 = 40
+     * draw 10 <= 20 -> decrease by step_down_draw 10 */
+    int new_power = regulate_compute(60, 10, &test_gpu_cfg, 200);
     assert(new_power == 190);
     return 0;
 }
@@ -343,9 +375,9 @@ static int test_regulate_cool_high_draw(void)
 {
     setup_regulate();
     /* temp 60 <= threshold_low 65 -> draw zone
-     * threshold_down = 200 - 20 = 180, threshold_up = 200 - 10 = 190
-     * draw 192 >= 190 -> increase by step_up_draw 15 */
-    int new_power = regulate_compute(60, 192, &test_gpu_cfg, 200);
+     * threshold_down = 200 * 0.10 = 20, threshold_up = 200 * 0.20 = 40
+     * draw 45 >= 40 -> increase by step_up_draw 15 */
+    int new_power = regulate_compute(60, 45, &test_gpu_cfg, 200);
     assert(new_power == 215);
     return 0;
 }
@@ -354,9 +386,9 @@ static int test_regulate_cool_draw_hysteresis(void)
 {
     setup_regulate();
     /* temp 60 <= threshold_low 65 -> draw zone
-     * threshold_down = 200 - 20 = 180, threshold_up = 200 - 10 = 190
-     * draw 185: 185 > 180 and 185 < 190 -> no change */
-    int new_power = regulate_compute(60, 185, &test_gpu_cfg, 200);
+     * threshold_down = 200 * 0.10 = 20, threshold_up = 200 * 0.20 = 40
+     * draw 30: 20 < 30 < 40 -> no change */
+    int new_power = regulate_compute(60, 30, &test_gpu_cfg, 200);
     assert(new_power == 200);
     return 0;
 }
@@ -365,8 +397,8 @@ static int test_regulate_cool_idle(void)
 {
     setup_regulate();
     /* temp 60 <= threshold_low 65 -> draw zone
-     * threshold_down = 200 - 20 = 180
-     * draw 0 <= 180 -> decrease by step_down_draw 10 */
+     * threshold_down = 200 * 0.10 = 20
+     * draw 0 <= 20 -> decrease by step_down_draw 10 */
     int new_power = regulate_compute(60, 0, &test_gpu_cfg, 200);
     assert(new_power == 190);
     return 0;
@@ -395,9 +427,9 @@ static int test_regulate_draw_clamped_to_min(void)
 {
     setup_regulate();
     /* temp 60 <= threshold_low 65 -> draw zone
-     * power_limit 55, threshold_down = 55 - 20 = 35
-     * draw 10 <= 35 -> decrease: 55 - 10 = 45, clamped to min 50 */
-    int new_power = regulate_compute(60, 10, &test_gpu_cfg, 55);
+     * power_limit 55, threshold_down = 55 * 0.10 = 5
+     * draw 0 <= 5 -> decrease: 55 - 10 = 45, clamped to min 50 */
+    int new_power = regulate_compute(60, 0, &test_gpu_cfg, 55);
     assert(new_power == 50);
     return 0;
 }
@@ -406,9 +438,9 @@ static int test_regulate_draw_clamped_to_max(void)
 {
     setup_regulate();
     /* temp 60 <= threshold_low 65 -> draw zone
-     * power_limit 295, threshold_up = 295 - 10 = 285
-     * draw 288 >= 285 -> increase: 295 + 15 = 310, clamped to max 300 */
-    int new_power = regulate_compute(60, 288, &test_gpu_cfg, 295);
+     * power_limit 295, threshold_up = 295 * 0.20 = 59
+     * draw 60 >= 59 -> increase: 295 + 15 = 310, clamped to max 300 */
+    int new_power = regulate_compute(60, 60, &test_gpu_cfg, 295);
     assert(new_power == 300);
     return 0;
 }
@@ -536,8 +568,12 @@ int main(void)
     test("empty_gpu_section_conf", test_empty_gpu_section_conf);
     test("invalid_min_gt_max_conf", test_invalid_min_gt_max_conf);
     test("invalid_threshold_low_ge_high_conf", test_invalid_threshold_low_ge_high_conf);
-    test("invalid_draw_offset_up_ge_down_conf", test_invalid_draw_offset_up_ge_down_conf);
-    test("invalid_draw_offset_up_eq_down_conf", test_invalid_draw_offset_up_eq_down_conf);
+    test("invalid_down_k_ge_up_k_conf", test_invalid_down_k_ge_up_k_conf);
+    test("invalid_down_k_eq_up_k_conf", test_invalid_down_k_eq_up_k_conf);
+    test("invalid_down_k_zero_conf", test_invalid_down_k_zero_conf);
+    test("invalid_down_k_gt_one_conf", test_invalid_down_k_gt_one_conf);
+    test("invalid_down_k_negative_conf", test_invalid_down_k_negative_conf);
+    test("invalid_down_k_bad_float_conf", test_invalid_down_k_bad_float_conf);
     test("invalid_poll_interval_conf", test_invalid_poll_interval_conf);
     test("invalid_avg_samples_conf", test_invalid_avg_samples_conf);
 
