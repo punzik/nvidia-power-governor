@@ -143,11 +143,11 @@ power_step_down_temp=15
 power_step_down_draw=10
 # Power increase step when draw is high (W)
 power_step_up_draw=15
-# Draw offsets below current power limit (W)
-#   decrease threshold = power_limit - offset_down
-#   increase threshold = power_limit - offset_up
-power_draw_offset_down=20
-power_draw_offset_up=10
+# Draw coefficients (fraction of current power limit)
+#   decrease threshold = power_limit * power_limit_down_k
+#   increase threshold = power_limit * power_limit_up_k
+power_limit_down_k=0.07
+power_limit_up_k=0.03
 
 [gpu.1]
 temp_threshold_high=75
@@ -157,8 +157,8 @@ min_power=50
 power_step_down_temp=10
 power_step_down_draw=10
 power_step_up_draw=10
-power_draw_offset_down=20
-power_draw_offset_up=10
+power_limit_down_k=0.07
+power_limit_up_k=0.03
 ```
 
 ### Global parameters
@@ -180,8 +180,8 @@ power_draw_offset_up=10
 | `power_step_down_temp`   | Power decrease step when overheating (W)            |
 | `power_step_down_draw`   | Power decrease step when draw is low (W)            |
 | `power_step_up_draw`     | Power increase step when draw is high (W)           |
-| `power_draw_offset_down` | Offset below power_limit for decrease threshold (W) |
-| `power_draw_offset_up`   | Offset below power_limit for increase threshold (W) |
+| `power_limit_down_k`     | Fraction of power_limit for decrease threshold (0.0–1.0) |
+| `power_limit_up_k`       | Fraction of power_limit for increase threshold (0.0–1.0) |
 
 GPU indices (0, 1, …) must match the system's GPU numbering as reported by `nvidia-smi -L`. The number of `[gpu.N]` sections must exactly match the number of GPUs detected on the system.
 
@@ -203,9 +203,9 @@ On each polling interval:
    No change. The GPU is in an acceptable temperature range.
 
    **Zone 2 — Cool** (`avg_temp <= temp_threshold_low`):
-   Draw-based regulation using offsets below the current power limit:
-   - `threshold_down = power_limit - power_draw_offset_down`
-   - `threshold_up   = power_limit - power_draw_offset_up`
+   Draw-based regulation using coefficients of the current power limit:
+   - `threshold_down = power_limit * power_limit_down_k`
+   - `threshold_up   = power_limit * power_limit_up_k`
    - If `power_draw <= threshold_down` → decrease by `power_step_down_draw` (not below `min_power`)
    - If `power_draw >= threshold_up` → increase by `power_step_up_draw` (not above `max_power`)
    - Otherwise → no change (within the draw hysteresis band)
@@ -233,7 +233,7 @@ All output goes to stdout. Lines are prefixed with `[HH:MM:SS]` when the `-t` fl
 Without `-v`, only power change events are logged:
 
 ```
-[14:30:01] GPU 0: initial power 50 W (max 300, min 50, step_down_temp 15, step_down_draw 10, step_up_draw 15, thresh_high 80 C, thresh_low 65 C, draw_offset 20/10 W)
+[14:30:01] GPU 0: initial power 50 W (max 300, min 50, step_down_temp 15, step_down_draw 10, step_up_draw 15, thresh_high 80 C, thresh_low 65 C, limit_k 0.07/0.03)
 [14:30:01] starting regulation loop (poll 1000 ms, temp_samples 5, draw_samples 5)
 [14:32:15] GPU 0: avg_temp 82 C, avg_draw 285 W -> power 270 -> 285 W
 ```
