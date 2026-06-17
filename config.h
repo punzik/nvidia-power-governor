@@ -16,9 +16,13 @@ struct gpu_config {
     int power_draw_offset_up;   /* W — offset below limit for increase threshold */
 };
 
+#define MAX_AVG_SAMPLES      100
+#define MAX_POLL_INTERVAL_MS 60000
+
 struct global_config {
-    int poll_interval;  /* ms */
+    int poll_interval;      /* ms */
     int avg_samples;
+    int draw_avg_samples;   /* number of power-draw samples to average */
 };
 
 #define MAX_GPUS 8

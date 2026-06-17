@@ -13,6 +13,19 @@ int compute_avg_temp(struct gpu_state *state)
     return (int)(sum / count);
 }
 
+int compute_avg_draw(struct gpu_state *state)
+{
+    int count = state->draw_count;
+    if (count == 0)
+        return 0;
+
+    long sum = 0;
+    for (int i = 0; i < count; i++)
+        sum += state->draw_buffer[i];
+
+    return (int)(sum / count);
+}
+
 int regulate_compute(int avg_temp,
                      int power_draw_w,
                      const struct gpu_config *gpu_cfg,

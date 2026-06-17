@@ -38,6 +38,7 @@ static int test_valid_conf(void)
 
     assert(cfg->global.poll_interval == 1000);
     assert(cfg->global.avg_samples == 5);
+    assert(cfg->global.draw_avg_samples == 5);
 
     assert(cfg->gpus[0].id == 0);
     assert(cfg->gpus[0].temp_threshold_high == 80);
@@ -73,6 +74,7 @@ static int test_valid_single_conf(void)
 
     assert(cfg->global.poll_interval == 500);
     assert(cfg->global.avg_samples == 3);
+    assert(cfg->global.draw_avg_samples == 3);
 
     assert(cfg->gpus[0].temp_threshold_high == 70);
     assert(cfg->gpus[0].temp_threshold_low == 55);
@@ -195,6 +197,7 @@ static int test_whitespace_conf(void)
 
     assert(cfg->global.poll_interval == 1000);
     assert(cfg->global.avg_samples == 5);
+    assert(cfg->global.draw_avg_samples == 5);
 
     assert(cfg->gpus[0].temp_threshold_high == 80);
     assert(cfg->gpus[0].temp_threshold_low == 65);

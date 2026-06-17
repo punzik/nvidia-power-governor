@@ -216,8 +216,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    emit_verbose("config loaded: %d GPU(s), poll %d ms, samples %d",
-                 cfg->gpu_count, cfg->global.poll_interval, cfg->global.avg_samples);
+    emit_verbose("config loaded: %d GPU(s), poll %d ms, temp_samples %d, draw_samples %d",
+                 cfg->gpu_count, cfg->global.poll_interval, cfg->global.avg_samples,
+                 cfg->global.draw_avg_samples);
 
     int sys_gpu_count = gpu_count();
     if (sys_gpu_count < 0) {
@@ -278,13 +279,12 @@ int main(int argc, char *argv[])
         }
     }
 
-    emit_log("starting regulation loop (poll %d ms, samples %d)",
-        cfg->global.poll_interval, cfg->global.avg_samples);
+    emit_log("starting regulation loop (poll %d ms, temp_samples %d, draw_samples %d)",
+        cfg->global.poll_interval, cfg->global.avg_samples, cfg->global.draw_avg_samples);
 
     while (!stop_requested) {
         /* read temperatures and power draw */
         int iteration_ok = 1;
-        int power_draws[MAX_GPUS];
         for (int i = 0; i < cfg->gpu_count; i++) {
             int temp = gpu_read_temp(i);
             if (temp < 0) {
@@ -292,22 +292,28 @@ int main(int argc, char *argv[])
                 iteration_ok = 0;
                 break;
             }
-            power_draws[i] = gpu_read_power_draw(i);
-            if (power_draws[i] < 0) {
+            int draw = gpu_read_power_draw(i);
+            if (draw < 0) {
                 fprintf(stderr, "warning: failed to read power draw for GPU %d, skipping iteration\n", i);
                 iteration_ok = 0;
                 break;
             }
             struct gpu_state *s = states[i];
-            int samples = cfg->global.avg_samples;
+            int temp_samples = cfg->global.avg_samples;
+            int draw_samples = cfg->global.draw_avg_samples;
 
             s->temp_buffer[s->temp_index] = temp;
-            s->temp_index = (s->temp_index + 1) % samples;
-            if (s->temp_count < samples)
+            s->temp_index = (s->temp_index + 1) % temp_samples;
+            if (s->temp_count < temp_samples)
                 s->temp_count++;
 
-            emit_verbose("GPU %d: temp %d C, draw %d W (sample %d/%d)",
-                         i, temp, power_draws[i], s->temp_count, samples);
+            s->draw_buffer[s->draw_index] = draw;
+            s->draw_index = (s->draw_index + 1) % draw_samples;
+            if (s->draw_count < draw_samples)
+                s->draw_count++;
+
+            emit_verbose("GPU %d: temp %d C, draw %d W (temp_sample %d/%d, draw_sample %d/%d)",
+                         i, temp, draw, s->temp_count, temp_samples, s->draw_count, draw_samples);
         }
 
         if (!iteration_ok) {
@@ -320,16 +326,17 @@ int main(int argc, char *argv[])
             if (stop_requested)
                 break;
             struct gpu_state *s = states[i];
-            int avg = compute_avg_temp(s);
+            int avg_temp = compute_avg_temp(s);
+            int avg_draw = compute_avg_draw(s);
 
-            int new_power = regulate_compute(avg, power_draws[i], &cfg->gpus[i], s->power_limit);
+            int new_power = regulate_compute(avg_temp, avg_draw, &cfg->gpus[i], s->power_limit);
 
-            emit_verbose("GPU %d: avg %d C, draw %d W, power %d -> %d W",
-                         i, avg, power_draws[i], s->power_limit, new_power);
+            emit_verbose("GPU %d: avg_temp %d C, avg_draw %d W, power %d -> %d W",
+                         i, avg_temp, avg_draw, s->power_limit, new_power);
 
             if (new_power != s->power_limit) {
-                emit_log("GPU %d: temp avg %d C, draw %d W -> power %d -> %d W",
-                    i, avg, power_draws[i], s->power_limit, new_power);
+                emit_log("GPU %d: avg_temp %d C, avg_draw %d W -> power %d -> %d W",
+                    i, avg_temp, avg_draw, s->power_limit, new_power);
                 s->power_limit = new_power;
                 char buf[MAIN_OUTPUT_BUF] = {0};
                 if (gpu_set_power(i, new_power, verbose ? buf : NULL, sizeof(buf)) != 0) {

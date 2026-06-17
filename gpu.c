@@ -163,15 +163,12 @@ int gpu_read_power_draw(int id)
 
 struct gpu_state **gpu_state_init(const struct config *cfg)
 {
-    size_t state_size = sizeof(struct gpu_state) +
-                        cfg->global.avg_samples * sizeof(int);
-
     struct gpu_state **states = calloc(cfg->gpu_count, sizeof(*states));
     if (!states)
         return NULL;
 
     for (int i = 0; i < cfg->gpu_count; i++) {
-        states[i] = calloc(1, state_size);
+        states[i] = calloc(1, sizeof(struct gpu_state));
         if (!states[i]) {
             /* clean up already allocated states */
             for (int j = 0; j < i; j++)
@@ -184,6 +181,8 @@ struct gpu_state **gpu_state_init(const struct config *cfg)
         states[i]->power_limit = cfg->gpus[i].min_power;
         states[i]->temp_index = 0;
         states[i]->temp_count = 0;
+        states[i]->draw_index = 0;
+        states[i]->draw_count = 0;
     }
 
     return states;

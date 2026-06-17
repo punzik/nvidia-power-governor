@@ -124,6 +124,8 @@ INI-like format with `[global]` and `[gpu.N]` sections. Comments are supported (
 poll_interval=1000
 # Number of temperature samples to average
 avg_samples=5
+# Number of power-draw samples to average
+draw_avg_samples=5
 
 [gpu.0]
 # Upper temperature threshold (°C) — above this, decrease power
@@ -160,10 +162,11 @@ power_draw_offset_up=10
 
 ### Global parameters
 
-| Parameter       | Description                                      |
-| --------------- | ------------------------------------------------ |
-| `poll_interval` | How often to read temperatures (ms)              |
-| `avg_samples`   | Number of samples to average for each GPU        |
+| Parameter          | Description                                      |
+| ------------------ | ------------------------------------------------ |
+| `poll_interval`    | How often to read temperatures (ms)              |
+| `avg_samples`      | Number of temperature samples to average         |
+| `draw_avg_samples` | Number of power-draw samples to average          |
 
 ### Per-GPU parameters
 
@@ -227,24 +230,24 @@ All output goes to stdout. Each line is prefixed with `[HH:MM:SS]`.
 Without `-v`, only power change events are logged:
 
 ```
-[14:30:01] GPU 0: initial power 300 W (max 300, min 50, step_down_temp 15, step_down_draw 10, step_up_draw 15, thresh_high 80 C, thresh_low 65 C, draw_offset 20/10 W)
-[14:30:01] starting regulation loop (poll 1000 ms, samples 5)
-[14:32:15] GPU 0: temp avg 82 C, draw 285 W -> power 300 -> 285 W
+[14:30:01] GPU 0: initial power 50 W (max 300, min 50, step_down_temp 15, step_down_draw 10, step_up_draw 15, thresh_high 80 C, thresh_low 65 C, draw_offset 20/10 W)
+[14:30:01] starting regulation loop (poll 1000 ms, temp_samples 5, draw_samples 5)
+[14:32:15] GPU 0: avg_temp 82 C, avg_draw 285 W -> power 270 -> 285 W
 ```
 
 With `-v`, additional debug information is shown:
 
 ```
-[14:30:01] config loaded: 2 GPU(s), poll 1000 ms, samples 5
+[14:30:01] config loaded: 2 GPU(s), poll 1000 ms, temp_samples 5, draw_samples 5
 [14:30:01] system GPU count: 2
-[14:30:01] GPU 0: temp 78 C, draw 250 W (sample 3/5)
-[14:30:01] GPU 0: avg 79 C, draw 250 W, power 300 -> 300 W
+[14:30:01] GPU 0: temp 78 C, draw 250 W (temp_sample 3/5, draw_sample 3/5)
+[14:30:01] GPU 0: avg_temp 79 C, avg_draw 245 W, power 300 -> 300 W
 ```
 
 When `nvidia-smi` produces output (e.g. on error), it is captured and printed indented:
 
 ```
-[14:32:15] GPU 0: temp avg 82 C, draw 285 W -> power 300 -> 285 W
+[14:32:15] GPU 0: avg_temp 82 C, avg_draw 285 W -> power 300 -> 285 W
 [14:32:15]   Provided power limit is not a valid power limit...
   Terminating early due to previous errors.
 ```
