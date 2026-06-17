@@ -43,10 +43,11 @@ make static         # build with static linking
 ### Nix flake
 
 ```bash
-nix build           # build the binary (dynamic)
-nix build .#static  # build the binary (static)
-nix develop         # enter dev shell
-nix run             # run the binary
+nix build              # build the binary (dynamic)
+nix build .#static     # build the binary (static)
+nix develop            # enter dev shell
+nix develop .#static   # enter dev shell with static libc
+nix run                # run the binary
 ```
 
 ## Usage

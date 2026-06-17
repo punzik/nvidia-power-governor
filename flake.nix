@@ -10,10 +10,10 @@
       supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
       forEachSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f nixpkgs.legacyPackages.${system});
 
-      mkPackage = pkgs: static: pkgs.stdenv.mkDerivation {
+      mkPackage = pkgs: static: with pkgs; stdenv.mkDerivation {
         name = "nvidia-power-governor" + (if static then "-static" else "");
         src = ./.;
-        nativeBuildInputs = (if static then [ pkgs.glibc.static ] else []);
+        nativeBuildInputs = (if static then [ glibc.static ] else []);
         buildPhase = (if static then "make static" else "make");
         installPhase = "install -Dm755 nvidia-power-governor $out/bin/nvidia-power-governor";
       };
@@ -24,9 +24,12 @@
         static  = mkPackage pkgs true;
       });
 
-      devShells = forEachSystem (pkgs: {
-        default = pkgs.mkShell {
-          packages = [ pkgs.gnumake pkgs.gcc ];
+      devShells = forEachSystem (pkgs: with pkgs; {
+        default = mkShell {
+          packages = [ gnumake ];
+        };
+        static = mkShell {
+          packages = [ gnumake glibc.static ];
         };
       });
 
